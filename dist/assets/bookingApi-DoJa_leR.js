@@ -1,1 +1,0 @@
-import{n as e,t}from"./api-dTiB42AF.js";var n=t=>e.get(`/public/booking/availability`,{params:t}),r=()=>e.get(`/public/stores`),i=t=>e.get(`/public/room-templates`,{params:{store_id:t}}),a=e=>t.post(`/customer/bookings/initiate`,e),o=e=>t.get(`/customer/bookings`,{params:e});export{a,r as i,o as n,i as r,n as t};
