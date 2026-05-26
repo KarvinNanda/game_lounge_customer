@@ -212,9 +212,3 @@ Booking / Top Up Credits / Event Booking
 > `PaymentMockView` hanya aktif saat akun Xendit belum terdaftar / mode testing.
 
 ---
-
-## 🌐 Environment Variables
-
-| Variable | Keterangan | Default |
-|---|---|---|
-| `VITE_API_URL` | Base URL backend API | `http://localhost:8080/api` |
