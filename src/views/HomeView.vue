@@ -29,11 +29,6 @@
               <p v-if="banner.subtitle" class="text-q-text-2 text-sm md:text-base mb-4">
                 {{ banner.subtitle }}
               </p>
-              <div class="flex flex-wrap gap-4 text-xs text-q-text-2">
-                <div class="flex items-center gap-1.5">🎮 <span>Game Terlengkap</span></div>
-                <div class="flex items-center gap-1.5">👑 <span>Harga Hemat</span></div>
-                <div class="flex items-center gap-1.5">🛡️ <span>Nyaman & Private</span></div>
-              </div>
             </div>
           </div>
         </SwiperSlide>
@@ -46,7 +41,7 @@
 
       <!-- ── QUICK ACTIONS ───────────────────────────────────────── -->
       <section class="py-6">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div
             v-for="action in QUICK_ACTIONS"
             :key="action.label"
@@ -68,11 +63,8 @@
 
       <!-- ── REKOMENDASI RUANGAN ─────────────────────────────────── -->
       <section class="py-2 pb-8">
-        <div class="flex items-center justify-between mb-4">
+        <div class="mb-4">
           <h2 class="text-lg font-bold text-white">Rekomendasi Ruangan</h2>
-          <button class="text-q-primary text-sm font-medium hover:text-q-primary-l transition-colors">
-            Lihat semua →
-          </button>
         </div>
 
         <div v-if="loadingRooms" class="flex gap-3 overflow-x-auto pb-2">
@@ -87,14 +79,13 @@
           <div
             v-for="room in rooms"
             :key="room.id"
-            @click="handleRoomClick(room)"
-            class="min-w-[160px] md:min-w-0 flex-shrink-0 bg-q-card border border-q-border rounded-2xl overflow-hidden cursor-pointer hover:border-q-primary transition-all group"
+            class="min-w-[160px] md:min-w-0 flex-shrink-0 bg-q-card border border-q-border rounded-2xl overflow-hidden"
           >
             <div class="relative h-28 overflow-hidden">
               <img
                 :src="getImgUrl(room.image_url)"
                 :alt="room.name"
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                class="w-full h-full object-cover"
               />
               <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
                 {{ formatCapacity(room.capacity_min, room.capacity_max) }}
@@ -102,7 +93,6 @@
             </div>
             <div class="p-3">
               <div class="font-bold text-white text-sm mb-0.5">{{ room.name }}</div>
-              <div class="text-q-gold text-xs mb-1">⭐ 4.9</div>
               <div class="text-q-text-2 text-xs">
                 Mulai <span class="text-white font-semibold">{{ formatPrice(room.min_price) }}</span> / jam
               </div>
@@ -171,10 +161,9 @@ const authStore = useAuthStore()
 const SWIPER_MODULES = [Autoplay, Pagination]
 
 const QUICK_ACTIONS = [
-  { label: 'Booking',               icon: '📅', desc: 'Book room favoritmu sekarang', color: '#7C3AED', path: '/booking',       requiresAuth: true  },
-  { label: 'Top Up Play Credits',   icon: '💳', desc: 'Lebih hemat pakai credits',    color: '#0EA5E9', path: '/credits',       requiresAuth: true  },
-  { label: 'Promo',                 icon: '🏷️', desc: 'Banyak diskon menarik',        color: '#F59E0B', path: '/promo',         requiresAuth: true  },
-  { label: 'Private Event Booking', icon: '🏠', desc: 'Acara seru? Kita siap!',       color: '#10B981', path: '/event-booking', requiresAuth: true  },
+  { label: 'Booking',               icon: '📅', desc: 'Book room favoritmu sekarang', color: '#7C3AED', path: '/booking',       requiresAuth: true },
+  { label: 'Top Up Play Credits',   icon: '💳', desc: 'Lebih hemat pakai credits',    color: '#0EA5E9', path: '/credits',       requiresAuth: true },
+  { label: 'Private Event Booking', icon: '🏠', desc: 'Acara seru? Kita siap!',       color: '#10B981', path: '/event-booking', requiresAuth: true },
 ]
 
 const FEATURES = [
@@ -232,13 +221,6 @@ const handleQuickAction = (action) => {
   router.push(action.path)
 }
 
-const handleRoomClick = (room) => {
-  if (!authStore.isLoggedIn) {
-    showLoginPrompt.value = true
-    return
-  }
-  router.push({ path: '/booking', query: { room_template: room.id } })
-}
 
 onMounted(async () => {
   try {
