@@ -1,110 +1,128 @@
 <template>
-  <nav class="sticky top-0 z-50 bg-q-bg/90 backdrop-blur-xl border-b border-q-border">
+  <nav class="sticky top-0 z-50 bg-[#080810]/80 backdrop-blur-xl border-b border-[#252540]">
     <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
 
       <!-- Logo -->
       <RouterLink to="/" class="flex flex-col leading-tight">
         <span class="text-white font-black text-xl tracking-wide">Quantum</span>
-        <span class="text-q-text-3 text-[9px] font-medium tracking-[0.25em] uppercase">Gaming Center</span>
+        <span class="text-[#6B7280] text-[9px] font-medium tracking-[0.25em] uppercase">Gaming Center</span>
       </RouterLink>
 
       <!-- Nav Links (desktop) -->
       <div class="hidden md:flex items-center gap-6">
         <RouterLink
-          v-for="item in NAV_ITEMS"
-          :key="item.path"
-          :to="item.path"
-          class="text-q-text-2 hover:text-white text-sm font-medium transition-colors"
-          active-class="!text-white"
+          to="/"
+          class="text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors"
+          :class="{ '!text-white': $route.path === '/' }"
         >
-          {{ item.label }}
+          Home
         </RouterLink>
+        <template v-if="authStore.isLoggedIn">
+          <button
+            @click="navTo('/my-bookings')"
+            class="text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors"
+            :class="{ '!text-white': $route.path === '/my-bookings' }"
+          >
+            My Bookings
+          </button>
+          <button
+            @click="navTo('/my-credits')"
+            class="text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors"
+            :class="{ '!text-white': $route.path === '/my-credits' }"
+          >
+            Play Credits
+          </button>
+          <button
+            @click="navTo('/promo')"
+            class="text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors"
+            :class="{ '!text-white': $route.path === '/promo' }"
+          >
+            Promo
+          </button>
+        </template>
       </div>
 
-      <!-- Right side -->
+      <!-- Right: Bell + Profile / Login -->
       <div class="flex items-center gap-3">
 
-        <!-- Bell (login only) -->
+        <!-- Bell notification (logged in only) -->
         <div v-if="authStore.isLoggedIn" class="relative">
           <button
-            @click="showBell = !showBell; showProfile = false"
-            class="w-9 h-9 flex items-center justify-center rounded-full bg-q-card border border-q-border text-q-text-2 hover:text-white hover:border-q-primary transition-all"
+            @click="showBell = !showBell"
+            class="w-9 h-9 flex items-center justify-center rounded-full bg-[#11111E] border border-[#252540] text-[#9CA3AF] hover:text-white hover:border-[#7C3AED] transition-all"
           >
             🔔
           </button>
           <div
             v-if="expiringCount > 0"
-            class="absolute -top-1 -right-1 w-4 h-4 bg-q-red rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+            class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
           >
             {{ expiringCount }}
           </div>
 
-          <Transition name="dropdown">
-            <div
-              v-if="showBell"
-              class="absolute right-0 top-12 w-72 bg-q-card border border-q-border rounded-2xl shadow-card p-4 z-50"
-            >
-              <div class="text-sm font-bold text-white mb-3">Notifikasi</div>
-              <div v-if="!expiringCredits.length" class="text-q-text-3 text-xs text-center py-4">
-                Tidak ada notifikasi baru
-              </div>
-              <div v-else class="space-y-2">
-                <div
-                  v-for="cr in expiringCredits"
-                  :key="cr.id"
-                  class="bg-q-card2 rounded-xl p-3"
-                >
-                  <div class="text-xs font-semibold text-amber-400 mb-0.5">⚠️ Credits hampir habis</div>
-                  <div class="text-white text-xs font-medium">{{ cr.package?.name }}</div>
-                  <div class="text-q-text-3 text-[11px]">
-                    Sisa {{ cr.remaining_hours }} jam · Expired {{ formatExpiry(cr.expires_at) }}
-                  </div>
+          <!-- Bell dropdown -->
+          <div
+            v-if="showBell"
+            class="absolute right-0 top-12 w-72 bg-[#11111E] border border-[#252540] rounded-2xl shadow-lg p-4 z-50"
+          >
+            <div class="text-sm font-bold text-white mb-3">Notifikasi</div>
+            <div v-if="!expiringCredits.length" class="text-[#6B7280] text-xs text-center py-4">
+              Tidak ada notifikasi baru
+            </div>
+            <div v-else class="space-y-2">
+              <div v-for="cr in expiringCredits" :key="cr.id" class="bg-[#181828] rounded-xl p-3">
+                <div class="text-xs font-semibold text-orange-400 mb-0.5">⚠️ Credits hampir habis</div>
+                <div class="text-white text-xs font-medium">{{ cr.package?.name }}</div>
+                <div class="text-[#6B7280] text-[11px]">
+                  Sisa {{ cr.remaining_hours }} jam · Expired {{ formatExpiry(cr.expires_at) }}
                 </div>
               </div>
             </div>
-          </Transition>
+          </div>
         </div>
 
-        <!-- Login button -->
+        <!-- Login button (guest) -->
         <RouterLink v-if="!authStore.isLoggedIn" to="/login">
-          <button class="px-4 py-2 bg-q-primary hover:bg-q-primary-d text-white text-sm font-semibold rounded-full transition-colors shadow-purple-sm">
+          <button class="px-4 py-2 bg-[#7C3AED] hover:bg-[#5B21B6] text-white text-sm font-semibold rounded-full transition-colors">
             Login
           </button>
         </RouterLink>
 
-        <!-- Profile dropdown -->
+        <!-- Profile dropdown (logged in) -->
         <div v-else class="relative">
           <button
-            @click="showProfile = !showProfile; showBell = false"
-            class="flex items-center gap-2 bg-q-card border border-q-border rounded-full pl-1 pr-3 py-1 hover:border-q-primary transition-all"
+            @click="showProfile = !showProfile"
+            class="flex items-center gap-2 bg-[#11111E] border border-[#252540] rounded-full pl-1 pr-3 py-1 hover:border-[#7C3AED] transition-all"
           >
-            <div class="w-7 h-7 rounded-full bg-gradient-to-br from-q-primary to-q-primary-d flex items-center justify-center text-white font-bold text-xs">
-              {{ customerInitial }}
+            <div class="w-7 h-7 rounded-full bg-[#7C3AED] flex items-center justify-center text-white font-bold text-xs">
+              {{ authStore.customer?.name?.[0]?.toUpperCase() }}
             </div>
-            <span class="hidden md:block text-sm font-medium text-white">{{ customerFirstName }}</span>
-            <svg class="w-3 h-3 text-q-text-3 transition-transform" :class="{ 'rotate-180': showProfile }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            <span class="hidden md:block text-sm font-medium text-white">
+              {{ authStore.customer?.name?.split(' ')[0] }}
+            </span>
+            <span class="text-[#6B7280] text-xs">▾</span>
           </button>
 
-          <Transition name="dropdown">
-            <div
-              v-if="showProfile"
-              class="absolute right-0 top-12 w-48 bg-q-card border border-q-border rounded-2xl shadow-card overflow-hidden z-50"
+          <!-- Profile dropdown menu -->
+          <div
+            v-if="showProfile"
+            class="absolute right-0 top-12 w-48 bg-[#11111E] border border-[#252540] rounded-2xl shadow-lg overflow-hidden z-50"
+          >
+            <RouterLink
+              to="/profile"
+              @click="showProfile = false"
+              class="flex items-center gap-2 px-4 py-3 text-sm text-[#9CA3AF] hover:bg-[#181828] hover:text-white transition-colors"
             >
-              <RouterLink to="/profile" @click="showProfile = false"
-                class="flex items-center gap-2.5 px-4 py-3 text-sm text-q-text-2 hover:bg-q-card2 hover:text-white transition-colors">
-                <span>👤</span> Profil Saya
-              </RouterLink>
-              <div class="border-t border-q-border" />
-              <button
-                @click="handleLogout"
-                class="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-q-red hover:bg-red-500/10 transition-colors"
-              >
-                <span>🚪</span> Keluar
-              </button>
-            </div>
-          </Transition>
+              👤 Profil Saya
+            </RouterLink>
+            <div class="border-t border-[#252540]" />
+            <button
+              @click="handleLogout"
+              class="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-[#181828] transition-colors"
+            >
+              🚪 Keluar
+            </button>
+          </div>
         </div>
 
       </div>
@@ -120,10 +138,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/authStore'
-import { useToast } from '@/composables/useToast'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { RouterLink, useRouter }       from 'vue-router'
+import { useAuthStore }                from '@/stores/authStore'
+import { useToast }                    from '@/composables/useToast'
 import { customerLogout, getCreditsExpiring } from '@/api/authApi'
 
 const router    = useRouter()
@@ -135,22 +153,22 @@ const showBell        = ref(false)
 const expiringCredits = ref([])
 const expiringCount   = ref(0)
 
-const NAV_ITEMS = [
-  // { label: 'Home',         path: '/' },
-  // { label: 'Booking',      path: '/booking' },
-  // { label: 'Promo',        path: '/promo' },
-  // { label: 'Play Credits', path: '/credits' },
-]
-
-const customerInitial   = computed(() => authStore.customer?.name?.[0]?.toUpperCase() ?? '')
-const customerFirstName = computed(() => authStore.customer?.name?.split(' ')[0] ?? '')
+// navTo: guard protected routes — redirect to login if not authenticated
+const navTo = (path) => {
+  showProfile.value = false
+  if (!authStore.isLoggedIn) {
+    router.push({ path: '/login', query: { redirect: path } })
+  } else {
+    router.push(path)
+  }
+}
 
 const handleLogout = async () => {
   showProfile.value = false
   try { await customerLogout() } catch {}
   authStore.logout()
-  toast.success('Berhasil keluar dari akun')
   router.push('/')
+  toast.success('Berhasil keluar dari akun')
 }
 
 const fetchExpiringCredits = async () => {
@@ -171,16 +189,13 @@ const formatExpiry = (d) => {
 }
 
 let pollInterval = null
+
 onMounted(() => {
   fetchExpiringCredits()
   pollInterval = setInterval(fetchExpiringCredits, 5 * 60 * 1000)
 })
-onUnmounted(() => clearInterval(pollInterval))
-</script>
 
-<style scoped>
-.dropdown-enter-active,
-.dropdown-leave-active { transition: all 0.15s ease; }
-.dropdown-enter-from,
-.dropdown-leave-to     { opacity: 0; transform: translateY(-6px) scale(0.97); }
-</style>
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval)
+})
+</script>
