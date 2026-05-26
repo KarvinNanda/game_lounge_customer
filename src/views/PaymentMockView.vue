@@ -85,10 +85,15 @@ import api from '@/api/index'
 const route  = useRoute()
 const router = useRouter()
 
-const invoiceId = route.query.invoice_id || ''
-const amount    = route.query.amount     || 0
-const holdId = route.query.hold_id
+const invoiceId  = route.query.invoice_id || ''
+const amount     = route.query.amount     || 0
+const intentType = route.query.type       || 'booking' // 'booking' | 'credits'
+const intentId   = route.query.intent_id
+  || route.query.hold_id
+  || route.query.event_id
+  || sessionStorage.getItem('quantum_intent_id')
   || sessionStorage.getItem('quantum_hold_id')
+  || sessionStorage.getItem('quantum_event_id')
   || ''
 
 const confirming = ref(false)
@@ -107,29 +112,47 @@ onMounted(() => {
 onUnmounted(() => clearInterval(countdownInterval))
 
 const handleConfirm = async () => {
-  if (!holdId) {
-    error.value = 'Hold ID tidak ditemukan. Silakan booking ulang.'
+  if (!intentId) {
+    error.value = 'ID transaksi tidak ditemukan. Silakan ulangi proses.'
     return
   }
   confirming.value = true
   error.value      = ''
   try {
-    const { data } = await api.post(`/customer/bookings/${holdId}/mock-confirm`)
-    
-    // Bersihkan sessionStorage setelah berhasil
-    sessionStorage.removeItem('quantum_hold_id')
-
-    router.push({
-      name:  'PaymentSuccess',
-      query: { booking_code: data.data?.booking_code },
-    })
+    if (intentType === 'credits') {
+      const { data } = await api.post(`/customer/play-credits/purchase/${intentId}/mock-confirm`)
+      sessionStorage.removeItem('quantum_intent_id')
+      router.push({
+        name:  'CreditsSuccess',
+        query: {
+          package_name:  data.data?.package_name,
+          total_hours:   data.data?.total_hours,
+          validity_days: data.data?.validity_days,
+        },
+      })
+    } else if (intentType === 'event') {
+      const { data } = await api.post(`/customer/event-bookings/${intentId}/mock-confirm`)
+      sessionStorage.removeItem('quantum_event_id')
+      router.push({
+        name:  'PaymentSuccess',
+        query: { type: 'event', event_name: data.data?.event_name },
+      })
+    } else {
+      const { data } = await api.post(`/customer/bookings/${intentId}/mock-confirm`)
+      sessionStorage.removeItem('quantum_hold_id')
+      router.push({
+        name:  'PaymentSuccess',
+        query: { booking_code: data.data?.booking_code },
+      })
+    }
   } catch (e) {
     error.value      = e?.response?.data?.message || 'Gagal mengkonfirmasi pembayaran'
     confirming.value = false
   }
 }
 
-const handleCancel = () => router.push({ name: 'PaymentFailed' })
+const handleCancel = () =>
+  router.push({ name: intentType === 'credits' ? 'CreditsFailed' : 'PaymentFailed' })
 
 const formatRp = (price) => 'Rp ' + Math.round(price).toLocaleString('id-ID')
 
