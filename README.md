@@ -1,6 +1,6 @@
 # Quantum Gaming Center — Customer App
 
-Frontend aplikasi customer untuk **Quantum Gaming Center**, sebuah platform booking ruangan game lounge berbasis web. Dibangun dengan Vue 3 + Vite, terhubung ke REST API backend Laravel.
+Frontend aplikasi customer untuk **Quantum Gaming Center**, sebuah platform booking ruangan game lounge berbasis web. Dibangun dengan Vue 3 + Vite, terhubung ke REST API backend Gin Gonic.
 
 ---
 
