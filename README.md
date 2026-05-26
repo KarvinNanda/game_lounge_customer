@@ -1,8 +1,6 @@
 # Quantum Gaming Center — Customer App
 
-Aplikasi web customer untuk **Quantum Gaming Center** (PlayStation / Gaming rental).  
-Dibangun dengan **Vue 3 + Vite + Tailwind CSS v4**.
-
+Frontend aplikasi customer untuk **Quantum Gaming Center**, sebuah platform booking ruangan game lounge berbasis web. Dibangun dengan **Vue 3 + Vite + Tailwind CSS v4**.
 ---
 
 ## Tech Stack
