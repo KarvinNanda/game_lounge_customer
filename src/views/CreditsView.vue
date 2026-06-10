@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="max-w-2xl mx-auto px-4 py-6 pb-32">
 
     <!-- Header -->
@@ -8,7 +8,7 @@
     </div>
 
     <!-- Info banner -->
-    <div class="bg-[#7C3AED]/15 border border-[#7C3AED]/30 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
+    <div class="bg-[#0282DE]/15 border border-[#0282DE]/30 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
       <span class="text-xl flex-shrink-0">🎮</span>
       <div class="flex-1 min-w-0">
         <div class="text-white font-bold text-sm">Main lebih hemat dengan Play Credits!</div>
@@ -324,7 +324,7 @@ onMounted(async () => {
 
 .section-num {
   width: 28px; height: 28px; border-radius: 50%;
-  background: #7C3AED; color: white;
+  background: #0282DE; color: white;
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700; flex-shrink: 0;
 }
@@ -338,23 +338,23 @@ onMounted(async () => {
   padding: 12px 14px; color: white; font-size: 14px;
   outline: none; transition: border-color 0.15s; appearance: none;
 }
-.credits-select:focus { border-color: #7C3AED; }
+.credits-select:focus { border-color: #0282DE; }
 
 .package-card {
   background: #181828; border: 0.5px solid #252540;
   border-radius: 12px; padding: 12px 14px;
   cursor: pointer; transition: all 0.15s; position: relative;
 }
-.package-card:hover    { border-color: #7C3AED; }
-.package-card-active   { border-color: #7C3AED; background: rgba(124, 58, 237, 0.08); }
+.package-card:hover    { border-color: #0282DE; }
+.package-card-active   { border-color: #0282DE; background: rgba(124, 58, 237, 0.08); }
 
 .payment-card {
   display: flex; align-items: center; gap: 12px;
   background: #181828; border: 0.5px solid #252540;
   border-radius: 12px; padding: 12px; cursor: pointer; transition: all 0.15s;
 }
-.payment-card:hover  { border-color: #7C3AED; }
-.payment-card-active { border-color: #7C3AED; background: rgba(124, 58, 237, 0.08); }
+.payment-card:hover  { border-color: #0282DE; }
+.payment-card-active { border-color: #0282DE; background: rgba(124, 58, 237, 0.08); }
 
 .slide-down-enter-active { transition: all 0.3s ease; }
 .slide-down-enter-from   { opacity: 0; transform: translateY(-12px); }

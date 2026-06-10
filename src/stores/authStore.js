@@ -32,5 +32,15 @@ export const useAuthStore = defineStore('customerAuth', () => {
     } catch { logout() }
   }
 
-  return { token, customer, isLoggedIn, isMember, setAuth, logout, fetchMe }
+  // ── Auth Modal (show LoginPromptModal alih-alih hard-redirect) ──
+  const showAuthModal = ref(false)
+  const pendingPath   = ref('')   // path yang ingin dituju sebelum modal muncul
+
+  const openAuthModal = (intendedPath = '') => {
+    pendingPath.value   = intendedPath
+    showAuthModal.value = true
+  }
+
+  return { token, customer, isLoggedIn, isMember, setAuth, logout, fetchMe,
+           showAuthModal, pendingPath, openAuthModal }
 })

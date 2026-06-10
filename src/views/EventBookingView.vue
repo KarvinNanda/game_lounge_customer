@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="max-w-2xl mx-auto px-4 py-6 pb-32">
 
     <div class="mb-4">
@@ -50,7 +50,7 @@
                   v-if="selectedStore.link_gmaps"
                   :href="selectedStore.link_gmaps"
                   target="_blank"
-                  class="text-[#7C3AED] text-xs hover:underline"
+                  class="text-[#0282DE] text-xs hover:underline"
                 >📍 Maps</a>
               </div>
             </div>
@@ -113,6 +113,19 @@
               />
             </div>
           </div>
+
+          <!-- Deskripsi / catatan untuk admin -->
+          <div>
+            <label class="block text-xs text-[#9CA3AF] mb-1.5">
+              Deskripsi / Info Tambahan (Opsional)
+            </label>
+            <textarea
+              v-model="form.description"
+              rows="2"
+              placeholder="Contoh: Acara ulang tahun, butuh dekorasi, dll."
+              class="event-select resize-none"
+            />
+          </div>
         </div>
       </section>
     </Transition>
@@ -131,15 +144,39 @@
           <div class="text-red-300 text-xs mt-0.5">Silakan pilih jam yang lain.</div>
         </div>
 
-        <!-- Available + Price breakdown -->
-        <div v-else-if="calculatedPrice > 0" class="bg-[#10B981]/10 border border-[#10B981]/30 rounded-xl p-3">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-[#10B981] text-xs font-semibold">✅ Tersedia</span>
-            <span class="text-[#9CA3AF] text-xs">{{ durationHours }} jam · {{ formatRp(Math.round(eventPrice / 24)) }}/jam</span>
+        <!-- Available + Price breakdown (weekday/weekend) -->
+        <div v-else-if="!hasConflict && pricePreview"
+          class="bg-[#10B981]/10 border border-[#10B981]/30 rounded-xl p-4">
+
+          <div class="text-[#10B981] text-sm font-semibold mb-3">✅ Tersedia!</div>
+
+          <!-- Badge weekday/weekend -->
+          <div
+            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold mb-3"
+            :class="pricePreview.day_type === 'Weekday'
+              ? 'bg-blue-500/20 text-blue-400'
+              : 'bg-orange-500/20 text-orange-400'"
+          >
+            {{ pricePreview.day_type === 'Weekday' ? '📅 Hari Kerja' : '🏖️ Weekend / Hari Libur' }}
           </div>
-          <div class="flex justify-between items-center pt-2 border-t border-[#252540]">
-            <span class="text-[#9CA3AF] text-sm">Total Estimasi</span>
-            <span class="text-[#10B981] font-black text-lg">{{ formatRp(calculatedPrice) }}</span>
+
+          <div class="space-y-1.5 text-sm">
+            <div class="flex justify-between">
+              <span class="text-[#9CA3AF]">Durasi</span>
+              <span class="text-white">{{ pricePreview.duration_hours }} Jam</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[#9CA3AF]">Harga per Jam</span>
+              <span class="text-white">
+                Rp {{ Math.round(pricePreview.active_price / 24).toLocaleString('id-ID') }}
+              </span>
+            </div>
+            <div class="flex justify-between border-t border-[#252540] pt-2 mt-1">
+              <span class="text-[#9CA3AF] font-medium">Total Estimasi</span>
+              <span class="text-[#10B981] font-black text-lg">
+                Rp {{ Math.round(pricePreview.total_price).toLocaleString('id-ID') }}
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -184,6 +221,13 @@
           <span>🛡️</span><span>Transaksi aman & terenkripsi.</span>
         </div>
 
+        <!-- Info paket / description dari admin -->
+        <div v-if="eventDescription"
+          class="bg-[#0B2350] border border-[#063271] rounded-xl p-3 mb-3">
+          <div class="text-[#6B7280] text-xs mb-1">ℹ️ Info Paket</div>
+          <p class="text-white text-sm leading-relaxed">{{ eventDescription }}</p>
+        </div>
+
         <!-- Error -->
         <div
           v-if="bookingError"
@@ -214,18 +258,21 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter }          from 'vue-router'
 import { useAuthStore }       from '@/stores/authStore'
 import { useToast }           from '@/composables/useToast'
+import api                                                                from '@/api/index'
 import { getPublicStores, checkEventAvailability, initiateEventBooking } from '@/api/bookingApi'
 
 const router    = useRouter()
 const authStore = useAuthStore()
 const toast     = useToast()
 
-const stores          = ref([])
-const eventPrice      = ref(0)   // price_per_day from API
-const hasConflict     = ref(false)
-const calculatedPrice = ref(0)
-const initiating      = ref(false)
-const bookingError    = ref('')
+const stores           = ref([])
+const eventPrice       = ref(0)   // price_per_day from API
+const hasConflict      = ref(false)
+const calculatedPrice  = ref(0)
+const pricePreview     = ref(null) // weekday/weekend price detail dari API
+const eventDescription = ref('')   // deskripsi paket dari admin (jika ada)
+const initiating       = ref(false)
+const bookingError     = ref('')
 
 const today = new Date().toISOString().split('T')[0]
 
@@ -235,6 +282,7 @@ const form = reactive({
   date:          '',
   startTime:     '',
   endTime:       '',
+  description:   '',
   paymentMethod: '',
 })
 
@@ -275,10 +323,14 @@ const recalculatePrice = async () => {
   if (!form.storeId || !form.date || !form.startTime || !form.endTime) return
   if (durationHours.value <= 0) return
 
+  pricePreview.value    = null
+  eventDescription.value = ''
+
   try {
-    const { data }  = await checkEventAvailability({ store_id: form.storeId, date: form.date })
-    eventPrice.value = data.data?.event_price?.price_per_day || 0
-    const blocked    = data.data?.blocked_ranges || []
+    // 1. Conflict check
+    const { data }   = await checkEventAvailability({ store_id: form.storeId, date: form.date })
+    eventPrice.value  = data.data?.event_price?.price_per_day || 0
+    const blocked     = data.data?.blocked_ranges || []
 
     const startMins = timeToMins(form.startTime)
     let   endMins   = timeToMins(form.endTime)
@@ -291,10 +343,31 @@ const recalculatePrice = async () => {
       return startMins < bE && endMins > bS
     })
 
+    if (hasConflict.value) {
+      calculatedPrice.value = 0
+      return
+    }
+
+    // 2. Fetch weekday/weekend price preview
+    const priceRes = await api.get('/event-bookings/preview-price', {
+      params: {
+        store_id:     form.storeId,
+        start_time:   form.startTime,
+        end_time:     form.endTime,
+        booking_date: form.date,
+      },
+    })
+
+    const preview          = priceRes.data.data
+    pricePreview.value     = preview || null
+    calculatedPrice.value  = preview?.total_price || 0
+    eventDescription.value = preview?.description || ''
+  } catch {
+    // fallback: hitung manual dari eventPrice jika preview-price belum ada di backend
     calculatedPrice.value = (!hasConflict.value && eventPrice.value > 0)
       ? Math.round((eventPrice.value / 24 * durationHours.value) / 1000) * 1000
       : 0
-  } catch {}
+  }
 }
 
 const handleBookEvent = async () => {
@@ -313,6 +386,7 @@ const handleBookEvent = async () => {
       start_time:     form.startTime,
       end_time:       form.endTime,
       payment_method: form.paymentMethod,
+      description:    form.description || undefined,
     })
 
     const invoiceURL = data.data?.invoice_url

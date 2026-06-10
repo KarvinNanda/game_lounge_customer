@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="max-w-2xl mx-auto px-4 py-6">
 
     <!-- Header -->
@@ -7,7 +7,7 @@
         <h1 class="text-2xl font-bold text-white">My Bookings</h1>
         <p class="text-[#9CA3AF] text-sm mt-0.5">Riwayat dan jadwal booking kamu</p>
       </div>
-      <div v-if="bookings.length" class="bg-[#7C3AED]/20 text-[#A78BFA] text-xs font-bold px-3 py-1.5 rounded-full">
+      <div v-if="bookings.length" class="bg-[#0282DE]/20 text-[#19B9EE] text-xs font-bold px-3 py-1.5 rounded-full">
         {{ bookings.length }} Booking
       </div>
     </div>
@@ -20,8 +20,8 @@
         @click="selectedStatus = s.value; fetchBookings()"
         class="px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all flex-shrink-0"
         :class="selectedStatus === s.value
-          ? 'bg-[#7C3AED] border-[#7C3AED] text-white'
-          : 'bg-[#11111E] border-[#252540] text-[#9CA3AF] hover:border-[#7C3AED]'"
+          ? 'bg-[#0282DE] border-[#0282DE] text-white'
+          : 'bg-[#11111E] border-[#252540] text-[#9CA3AF] hover:border-[#0282DE]'"
       >
         {{ s.label }}
       </button>
@@ -40,7 +40,7 @@
         {{ selectedStatus === 'all' ? 'Kamu belum pernah booking di Quantum.' : `Tidak ada booking dengan status ini.` }}
       </p>
       <RouterLink to="/booking">
-        <button class="px-5 py-2.5 bg-[#7C3AED] text-white font-bold rounded-xl text-sm">Booking Sekarang</button>
+        <button class="px-5 py-2.5 bg-[#0282DE] text-white font-bold rounded-xl text-sm">Booking Sekarang</button>
       </RouterLink>
     </div>
 
@@ -59,29 +59,48 @@
         <div
           v-for="b in bookings"
           :key="b.id"
-          class="grid grid-cols-[1fr_auto_auto] gap-3 items-center px-4 py-3 hover:bg-[#181828] transition-colors"
+          class="px-4 py-3 hover:bg-[#181828] transition-colors"
         >
-          <!-- Left: code + store + room + status -->
-          <div class="min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-[#7C3AED] text-[11px] font-bold tracking-wider">{{ b.booking_code }}</span>
-              <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded-full" :class="statusStyle(b.status)">
-                {{ statusLabel(b.status) }}
-              </span>
+          <!-- Main row: booking info | jadwal | total -->
+          <div class="grid grid-cols-[1fr_auto_auto] gap-3 items-center">
+            <!-- Left: code + store + room + status -->
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[#0282DE] text-[11px] font-bold tracking-wider">{{ b.booking_code }}</span>
+                <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded-full" :class="statusStyle(b.status)">
+                  {{ statusLabel(b.status) }}
+                </span>
+              </div>
+              <div class="text-white text-sm font-semibold truncate mt-0.5">{{ b.store?.name }}</div>
+              <div class="text-[#6B7280] text-[11px] truncate">{{ b.room?.room_template?.name }}</div>
             </div>
-            <div class="text-white text-sm font-semibold truncate mt-0.5">{{ b.store?.name }}</div>
-            <div class="text-[#6B7280] text-[11px] truncate">{{ b.room?.room_template?.name }}</div>
+
+            <!-- Center: date + time -->
+            <div class="flex-shrink-0 text-center">
+              <div class="text-white text-xs font-medium">{{ formatDateShort(b.booking_date) }}</div>
+              <div class="text-[#9CA3AF] text-[11px]">{{ b.start_time?.slice(0,5) }}–{{ b.end_time?.slice(0,5) }}</div>
+            </div>
+
+            <!-- Right: price -->
+            <div class="flex-shrink-0 text-right">
+              <span class="text-[#19B9EE] text-xs font-bold">{{ formatRp(b.total_price) }}</span>
+            </div>
           </div>
 
-          <!-- Center: date + time -->
-          <div class="flex-shrink-0 text-center">
-            <div class="text-white text-xs font-medium">{{ formatDateShort(b.booking_date) }}</div>
-            <div class="text-[#9CA3AF] text-[11px]">{{ b.start_time?.slice(0,5) }}–{{ b.end_time?.slice(0,5) }}</div>
-          </div>
-
-          <!-- Right: price -->
-          <div class="flex-shrink-0 text-right">
-            <span class="text-[#A78BFA] text-xs font-bold">{{ formatRp(b.total_price) }}</span>
+          <!-- FnB order button — only for ongoing bookings -->
+          <div v-if="b.status === 'ongoing'" class="mt-3 pt-3 border-t border-[#1E1E30]">
+            <RouterLink
+              :to="`/fnb-order?booking_id=${b.id}&room_info=${encodeURIComponent((b.store?.name || '') + ' — ' + (b.room?.room_template?.name || ''))}`"
+            >
+              <button
+                class="w-full py-2.5 bg-[#0282DE]/10 border border-[#0282DE]/30
+                       text-[#0282DE] text-sm font-semibold rounded-xl
+                       hover:bg-[#0282DE] hover:text-white transition-all
+                       flex items-center justify-center gap-2"
+              >
+                🍽️ Pesan Makanan & Minuman
+              </button>
+            </RouterLink>
           </div>
         </div>
       </div>

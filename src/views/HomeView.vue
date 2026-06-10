@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="min-h-screen">
 
     <!-- ── HERO BANNER SLIDER ──────────────────────────────────── -->
@@ -37,22 +37,25 @@
       <div v-else class="w-full h-[320px] md:h-[440px] bg-q-card animate-pulse" />
     </section>
 
-    <div class="max-w-6xl mx-auto px-4">
-
-      <!-- ── QUICK ACTIONS ───────────────────────────────────────── -->
+    <!-- Quick Actions — dalam home-container -->
+    <div class="home-container">
       <section class="py-6">
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div class="grid grid-cols-3 gap-2 sm:gap-3">
           <div
             v-for="action in QUICK_ACTIONS"
             :key="action.label"
             @click="handleQuickAction(action)"
-            class="bg-q-card border border-q-border rounded-2xl p-4 cursor-pointer hover:border-q-primary hover:bg-q-card2 transition-all group"
+            class="bg-q-card border border-q-border rounded-2xl p-3 sm:p-4
+                   cursor-pointer hover:border-q-primary hover:bg-q-card2 transition-all group"
           >
-            <div class="text-3xl mb-3">{{ action.icon }}</div>
-            <div class="font-bold text-white text-sm mb-1">{{ action.label }}</div>
-            <div class="text-q-text-3 text-xs mb-4 leading-relaxed">{{ action.desc }}</div>
+            <div class="text-2xl sm:text-3xl mb-2 sm:mb-3">{{ action.icon }}</div>
+            <div class="font-bold text-white text-xs sm:text-sm mb-1 leading-tight">{{ action.label }}</div>
+            <div class="text-q-text-3 text-[10px] sm:text-xs mb-3 sm:mb-4 leading-relaxed hidden sm:block">
+              {{ action.desc }}
+            </div>
             <div
-              class="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm transition-transform group-hover:translate-x-1"
+              class="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center
+                     text-white text-xs sm:text-sm transition-transform group-hover:translate-x-1 mt-2 sm:mt-0"
               :style="{ background: action.color }"
             >
               →
@@ -60,46 +63,146 @@
           </div>
         </div>
       </section>
+    </div>
 
-      <!-- ── REKOMENDASI RUANGAN ─────────────────────────────────── -->
-      <section class="py-2 pb-8">
-        <div class="mb-4">
-          <h2 class="text-lg font-bold text-white">Rekomendasi Ruangan</h2>
+    <!-- ── REKOMENDASI RUANGAN ───────────────────────────────── -->
+    <section class="py-4">
+
+      <!-- Header — sejajar dengan section lain via home-container -->
+      <div class="home-container flex items-center justify-between mb-4">
+        <h2 class="text-white font-bold text-lg">Rekomendasi Ruangan</h2>
+      </div>
+
+      <!-- ── DESKTOP: Swiper carousel, 4 slides tampil, navigate kalau ada lebih ── -->
+      <!-- @wheel: Shift+ScrollDown → next, Shift+ScrollUp → prev -->
+      <div class="hidden md:block home-container relative" @wheel.passive="onRoomWheel">
+
+        <!-- Loading skeleton -->
+        <div v-if="loadingRooms" class="grid grid-cols-4 gap-4">
+          <div v-for="i in 4" :key="i"
+            class="h-56 bg-q-card rounded-2xl animate-pulse" />
         </div>
 
-        <div v-if="loadingRooms" class="flex gap-3 overflow-x-auto pb-2">
-          <div
-            v-for="i in 4"
-            :key="i"
-            class="min-w-[160px] h-[200px] bg-q-card rounded-2xl animate-pulse flex-shrink-0"
-          />
-        </div>
-
-        <div v-else class="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:overflow-visible">
-          <div
-            v-for="room in rooms"
-            :key="room.id"
-            class="min-w-[160px] md:min-w-0 flex-shrink-0 bg-q-card border border-q-border rounded-2xl overflow-hidden"
+        <!-- Swiper Carousel -->
+        <template v-else>
+          <Swiper
+            :modules="ROOM_SWIPER_MODULES"
+            :slides-per-view="4"
+            :space-between="16"
+            :navigation="{
+              prevEl: '.room-swiper-prev',
+              nextEl: '.room-swiper-next',
+              disabledClass: 'room-nav-disabled',
+            }"
+            :pagination="recommendedRooms.length > 4
+              ? { clickable: true, el: '.room-swiper-pagination' }
+              : false"
+            class="room-swiper"
+            @swiper="onRoomSwiper"
           >
-            <div class="relative h-28 overflow-hidden">
-              <img
-                :src="getImgUrl(room.image_url)"
-                :alt="room.name"
-                class="w-full h-full object-cover"
-              />
-              <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                {{ formatCapacity(room.capacity_min, room.capacity_max) }}
+            <SwiperSlide v-for="room in recommendedRooms" :key="room.id">
+              <div
+                @click="$router.push(`/room/${room.id}`)"
+                class="bg-q-card border border-q-border rounded-2xl overflow-hidden
+                       cursor-pointer hover:border-q-primary transition-all group h-full"
+              >
+                <!-- Gambar -->
+                <div class="relative h-40 bg-q-card2 overflow-hidden">
+                  <img v-if="room.image_url"
+                    :src="getImgUrl(room.image_url)" :alt="room.name"
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <div v-else class="w-full h-full flex items-center justify-center text-4xl">🎮</div>
+
+                  <!-- Badge kapasitas -->
+                  <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-sm
+                              text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
+                    Hingga {{ room.capacity_max }} Orang
+                  </div>
+
+                  <!-- Badge Favorit -->
+                  <div v-if="isFavorite(room.id)"
+                    class="absolute top-2 right-2 bg-amber-400 text-black
+                           text-[10px] font-black px-2 py-0.5 rounded-full
+                           flex items-center gap-0.5 shadow-md">
+                    ⭐ Favorit
+                  </div>
+                </div>
+
+                <!-- Info -->
+                <div class="p-3">
+                  <div class="text-white font-semibold text-sm truncate">{{ room.name }}</div>
+                  <div class="text-q-text-3 text-xs mt-0.5">
+                    <span v-if="room.min_price">
+                      Mulai <span class="text-white font-bold">{{ formatRpShort(room.min_price) }}</span> / jam
+                    </span>
+                    <span v-else>—</span>
+                  </div>
+                </div>
+              </div>
+            </SwiperSlide>
+          </Swiper>
+
+          <!-- Tombol navigasi ◄ ► — hanya tampil kalau rooms > 4 -->
+          <template v-if="recommendedRooms.length > 4">
+            <button class="room-swiper-prev room-nav-btn">◀</button>
+            <button class="room-swiper-next room-nav-btn room-nav-btn-right">▶</button>
+          </template>
+
+          <!-- Pagination dots — hanya kalau > 4 -->
+          <div v-if="recommendedRooms.length > 4"
+            class="room-swiper-pagination mt-4 flex justify-center" />
+        </template>
+      </div>
+
+      <!-- ── MOBILE: horizontal scroll ── -->
+      <div class="md:hidden">
+        <div v-if="loadingRooms"
+          class="flex gap-3 px-4 pb-2"
+          style="scrollbar-width:none;">
+          <div v-for="i in 3" :key="i"
+            class="flex-shrink-0 w-44 h-52 bg-q-card rounded-2xl animate-pulse" />
+        </div>
+        <div v-else
+          class="flex gap-3 overflow-x-auto px-4 pb-2 scroll-smooth hide-scrollbar"
+          style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
+          <div
+            v-for="room in recommendedRooms"
+            :key="room.id"
+            @click="$router.push(`/room/${room.id}`)"
+            class="flex-shrink-0 w-44 bg-q-card border border-q-border rounded-2xl
+                   overflow-hidden cursor-pointer hover:border-q-primary transition-all"
+          >
+            <div class="relative h-28 bg-q-card2 overflow-hidden">
+              <img v-if="room.image_url" :src="getImgUrl(room.image_url)" :alt="room.name"
+                class="w-full h-full object-cover" />
+              <div v-else class="w-full h-full flex items-center justify-center text-3xl">🎮</div>
+              <div class="absolute top-2 left-2 bg-black/60 text-white text-[10px]
+                          font-medium px-2 py-0.5 rounded-full whitespace-nowrap">
+                Hingga {{ room.capacity_max }} Orang
+              </div>
+              <div v-if="isFavorite(room.id)"
+                class="absolute top-2 right-2 bg-amber-400 text-black
+                       text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap">
+                ⭐ Favorit
               </div>
             </div>
             <div class="p-3">
-              <div class="font-bold text-white text-sm mb-0.5">{{ room.name }}</div>
-              <div class="text-q-text-2 text-xs">
-                Mulai <span class="text-white font-semibold">{{ formatPrice(room.min_price) }}</span> / jam
+              <div class="text-white font-semibold text-sm truncate">{{ room.name }}</div>
+              <div class="text-q-text-3 text-xs mt-0.5">
+                <span v-if="room.min_price">
+                  Mulai <span class="text-white font-bold">{{ formatRpShort(room.min_price) }}</span> / jam
+                </span>
+                <span v-else>—</span>
               </div>
             </div>
           </div>
         </div>
-      </section>
+      </div>
+
+    </section>
+
+    <!-- Feature Highlights + Social — dalam home-container -->
+    <div class="home-container">
 
       <!-- ── FEATURE HIGHLIGHTS ──────────────────────────────────── -->
       <section class="py-4 pb-8">
@@ -140,28 +243,26 @@
 
     </div>
 
-    <LoginPromptModal v-model="showLoginPrompt" />
-
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter, RouterLink } from 'vue-router'
 import { Swiper, SwiperSlide } from 'swiper/vue'
-import { Autoplay, Pagination } from 'swiper/modules'
-import LoginPromptModal from '@/components/LoginPromptModal.vue'
+import { Autoplay, Pagination, Navigation } from 'swiper/modules'
 import { useAuthStore } from '@/stores/authStore'
 import { getBanners } from '@/api/bannerApi'
-import { getRoomRecommendations, getRoomTemplates } from '@/api/roomApi'
+import api from '@/api/index'
 
 const router    = useRouter()
 const authStore = useAuthStore()
 
 const SWIPER_MODULES = [Autoplay, Pagination]
+const ROOM_SWIPER_MODULES = [Navigation, Pagination]
 
 const QUICK_ACTIONS = [
-  { label: 'Booking',               icon: '📅', desc: 'Book room favoritmu sekarang', color: '#7C3AED', path: '/booking',       requiresAuth: true },
+  { label: 'Booking',               icon: '📅', desc: 'Book room favoritmu sekarang', color: '#0282DE', path: '/booking',       requiresAuth: true },
   { label: 'Top Up Play Credits',   icon: '💳', desc: 'Lebih hemat pakai credits',    color: '#0EA5E9', path: '/credits',       requiresAuth: true },
   { label: 'Private Event Booking', icon: '🏠', desc: 'Acara seru? Kita siap!',       color: '#10B981', path: '/event-booking', requiresAuth: true },
 ]
@@ -194,20 +295,83 @@ const SOCIALS = [
   },
 ]
 
-const banners      = ref([])
-const rooms        = ref([])
-const loadingRooms = ref(true)
-const showLoginPrompt = ref(false)
+const banners           = ref([])
+const allRoomTemplates    = ref([])   // semua room templates dari API
+const recommendedRooms    = ref([])   // semua rooms: favorites dulu, sisanya random (tanpa batas)
+const loadingRooms        = ref(true)
+const roomSwiperInstance  = ref(null) // instance Swiper untuk kontrol manual (Shift+Scroll)
 
+// ── Swiper instance callback ─────────────────────────────────
+const onRoomSwiper = (swiper) => {
+  roomSwiperInstance.value = swiper
+}
+
+// ── Shift + Scroll → navigasi carousel ──────────────────────
+// Shift+ScrollDown → slideNext  |  Shift+ScrollUp → slidePrev
+const onRoomWheel = (e) => {
+  if (!e.shiftKey) return
+  if (e.deltaY > 0) {
+    roomSwiperInstance.value?.slideNext()
+  } else {
+    roomSwiperInstance.value?.slidePrev()
+  }
+}
+
+// Favorite room template IDs dari customer yang login
+const favoriteIds = computed(() => {
+  if (!authStore.isLoggedIn || !authStore.customer) return []
+  const favs = authStore.customer.favorite_room_types || []
+  return favs.map(f => f.room_template_id || f.room_template?.id).filter(Boolean)
+})
+
+// Bangun daftar rekomendasi: favorites dulu, sisanya random
+// Tidak di-cap — semua rooms masuk ke swiper (4 tampil sekaligus, sisanya navigate)
+const buildRecommendations = () => {
+  if (!allRoomTemplates.value.length) return
+
+  const favIds       = favoriteIds.value
+  const favorites    = allRoomTemplates.value.filter(r => favIds.includes(r.id))
+  const nonFavorites = allRoomTemplates.value.filter(r => !favIds.includes(r.id))
+  const shuffled     = [...nonFavorites].sort(() => Math.random() - 0.5)
+
+  // Semua rooms tanpa batas: favorites di depan, non-favorites random di belakang
+  recommendedRooms.value = [...favorites, ...shuffled]
+}
+
+// Cek apakah room ini adalah favorite customer
+const isFavorite = (roomId) => favoriteIds.value.includes(roomId)
+
+// Fetch semua room templates dari public endpoint
+const fetchRooms = async () => {
+  loadingRooms.value = true
+  try {
+    const { data } = await api.get('/public/room-templates')
+    allRoomTemplates.value = data.data || []
+    buildRecommendations()
+  } catch {
+    allRoomTemplates.value = []
+  } finally {
+    loadingRooms.value = false
+  }
+}
+
+// Rebuild saat login status atau favorites berubah
+watch(() => authStore.isLoggedIn, () => buildRecommendations())
+watch(() => authStore.customer?.favorite_room_types, () => buildRecommendations(), { deep: true })
+
+// ── Helpers ────────────────────────────────────────────────────
 const getImgUrl = (url) => {
   if (!url) return '/placeholder.jpg'
   if (url.startsWith('http')) return url
   return (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080') + url
 }
 
-const formatPrice = (price) => {
+// Format harga singkat: 15RB, 250RB, 1.5JT
+const formatRpShort = (price) => {
   if (!price) return '—'
-  return price >= 1000 ? `${Math.round(price / 1000)}RB` : price.toLocaleString('id-ID')
+  if (price >= 1_000_000) return `${(price / 1_000_000).toFixed(price % 1_000_000 === 0 ? 0 : 1)}JT`
+  if (price >= 1_000)     return `${Math.round(price / 1_000)}RB`
+  return `Rp ${price}`
 }
 
 const formatCapacity = (min, max) =>
@@ -215,12 +379,11 @@ const formatCapacity = (min, max) =>
 
 const handleQuickAction = (action) => {
   if (action.requiresAuth && !authStore.isLoggedIn) {
-    showLoginPrompt.value = true
+    authStore.openAuthModal(action.path) // pakai global modal dari CustomerLayout
     return
   }
   router.push(action.path)
 }
-
 
 onMounted(async () => {
   try {
@@ -230,20 +393,88 @@ onMounted(async () => {
     banners.value = []
   }
 
-  try {
-    loadingRooms.value = true
-    if (authStore.isLoggedIn) {
-      const { data } = await getRoomRecommendations()
-      rooms.value = data.data || []
-    }
-    if (!rooms.value.length) {
-      const { data } = await getRoomTemplates()
-      rooms.value = (data.data || []).slice(0, 4)
-    }
-  } catch {
-    rooms.value = []
-  } finally {
-    loadingRooms.value = false
-  }
+  fetchRooms()
 })
 </script>
+
+<style scoped>
+/* Container utama — semua sections sejajar di sini */
+.home-container {
+  max-width: 1152px;       /* max-w-6xl */
+  margin: 0 auto;
+  padding-left: 1rem;      /* 16px mobile */
+  padding-right: 1rem;
+  --container-padding: 1rem;
+}
+@media (min-width: 640px) {
+  .home-container {
+    padding-left: 1.5rem;  /* 24px sm+ */
+    padding-right: 1.5rem;
+    --container-padding: 1.5rem;
+  }
+}
+
+/* Room cards scroll: overflow keluar container dengan negative margin */
+.rooms-scroll {
+  margin-left:  calc(-1 * var(--container-padding));
+  margin-right: calc(-1 * var(--container-padding));
+  padding-left:  var(--container-padding);
+  padding-right: var(--container-padding);
+}
+
+/* Sembunyikan scrollbar tapi tetap bisa scroll horizontal */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Room Swiper (Desktop) ── */
+.room-swiper {
+  width: 100%;
+  /* biarkan overflow: hidden (default Swiper) — slide ke-5+ harus tersembunyi sampai di-navigate */
+}
+
+/* Tombol navigasi ◄ ► */
+.room-nav-btn {
+  position: absolute;
+  top: 40%; /* center pada area gambar */
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  background: rgba(2, 130, 222, 0.85);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-shadow: 0 2px 12px rgba(2, 130, 222, 0.4);
+}
+.room-nav-btn:hover {
+  background: #0282DE;
+  transform: translateY(-50%) scale(1.1);
+}
+.room-swiper-prev   { left: -18px; }
+.room-nav-btn-right { right: -18px; }
+
+/* Disabled state di ujung slide */
+.room-nav-disabled {
+  opacity: 0.3 !important;
+  cursor: not-allowed !important;
+}
+
+/* Pagination dots */
+.room-swiper-pagination :deep(.swiper-pagination-bullet) {
+  background: #7A8BA8;
+  opacity: 1;
+  width: 6px;
+  height: 6px;
+}
+.room-swiper-pagination :deep(.swiper-pagination-bullet-active) {
+  background: #0282DE;
+  width: 18px;
+  border-radius: 3px;
+}
+</style>
