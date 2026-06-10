@@ -1,6 +1,7 @@
-# Quantum Gaming Center — Customer App
+# Gaming Lounge — Customer App
 
 Frontend aplikasi customer untuk **Quantum Gaming Center**, sebuah platform booking ruangan game lounge berbasis web. Dibangun dengan **Vue 3 + Vite + Tailwind CSS v4**.
+
 ---
 
 ## Tech Stack
