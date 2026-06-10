@@ -125,12 +125,11 @@
       </section>
     </Transition>
 
-    <!-- ── SECTION 3: TANGGAL & DURASI ─────────────────────── -->
+    <!-- ── SECTION 3: PILIH TANGGAL ─────────────────────────── -->
     <Transition name="slide-down">
       <section v-if="form.roomTemplateId" class="booking-section">
-        <SectionHeader :num="3" title="Tanggal & Durasi" desc="Pilih tanggal dan berapa lama kamu bermain" />
-
-        <div class="mb-3">
+        <SectionHeader :num="3" title="Pilih Tanggal" desc="Pilih tanggal bermain kamu" />
+        <div>
           <label class="block text-xs text-q-text-2 mb-1.5">Tanggal Bermain</label>
           <input
             type="date"
@@ -140,67 +139,82 @@
             class="booking-select"
           />
         </div>
-
-        <div>
-          <label class="block text-xs text-q-text-2 mb-1.5">Durasi Bermain</label>
-          <div class="grid grid-cols-5 gap-1.5">
-            <button
-              v-for="h in DURATION_OPTIONS"
-              :key="h"
-              @click="onDurationSelect(h)"
-              class="py-1.5 rounded-lg text-xs font-semibold border transition-all"
-              :class="form.durationHours === h
-                ? 'bg-q-primary border-q-primary text-white'
-                : 'bg-q-card border-q-border text-q-text-2 hover:border-q-primary'"
-            >
-              {{ h }}j
-            </button>
-          </div>
-        </div>
       </section>
     </Transition>
 
-    <!-- ── SECTION 4: PILIH JAM ────────────────────────────── -->
+    <!-- ── SECTION 4: PILIH JAM (Multi-Slot Grid) ─────────── -->
     <Transition name="slide-down">
-      <section v-if="form.date && form.durationHours" class="booking-section">
-        <SectionHeader :num="4" title="Pilih Jam Mulai" desc="Pilih jam bermain yang tersedia" />
+      <section v-if="form.date && (hourlySlots.length > 0 || loadingSlots)" class="booking-section">
+        <SectionHeader :num="4" title="Pilih Jam Bermain" desc="Pilih satu atau lebih jam sesuai rencana" />
 
-        <div v-if="loadingSlots" class="grid grid-cols-4 gap-1.5">
-          <div v-for="i in 8" :key="i" class="h-12 bg-q-card rounded-lg animate-pulse" />
+        <!-- Jam operasional -->
+        <div class="flex items-center gap-2 bg-q-card2 rounded-xl px-3 py-2 mb-3 text-xs text-q-text-2">
+          <span>🕐</span>
+          <span>Jam operasional: {{ storeHours }}</span>
         </div>
 
-        <div v-else-if="slots.length" class="grid grid-cols-4 gap-1.5">
+        <!-- Loading skeleton -->
+        <div v-if="loadingSlots" class="grid grid-cols-3 gap-2 mb-3">
+          <div v-for="i in 9" :key="i" class="h-14 bg-q-card2 rounded-xl animate-pulse" />
+        </div>
+
+        <!-- Slot grid -->
+        <div v-else-if="hourlySlots.length" class="grid grid-cols-3 gap-2 mb-3">
           <button
-            v-for="slot in slots"
+            v-for="slot in hourlySlots"
             :key="slot.start_time"
             :disabled="!slot.available"
-            @click="onSlotSelect(slot)"
-            class="py-2 rounded-lg text-center border transition-all relative"
-            :class="!slot.available
-              ? 'bg-q-card/50 border-q-border/30 opacity-40 cursor-not-allowed'
-              : form.startTime === slot.start_time
-                ? 'bg-q-primary border-q-primary text-white'
-                : 'bg-q-card border-q-border hover:border-q-primary cursor-pointer'"
+            @click="toggleSlot(slot.start_time)"
+            class="py-3 px-2 rounded-xl text-center border transition-all relative"
+            :class="[
+              !slot.available
+                ? 'bg-q-card2/50 border-q-border/30 opacity-40 cursor-not-allowed'
+                : isSlotSelected(slot.start_time)
+                  ? 'bg-q-primary border-q-primary text-white'
+                  : 'bg-q-card border-q-border hover:border-q-primary cursor-pointer'
+            ]"
           >
-            <div class="font-bold text-xs">{{ slot.start_time }}</div>
-            <div class="text-[10px] mt-0.5" :class="form.startTime === slot.start_time ? 'text-white/80' : 'text-q-text-3'">
-              <template v-if="slot.available">{{ slot.price ? formatRp(slot.price) : `–${slot.end_time}` }}</template>
-              <template v-else>Penuh</template>
-            </div>
+            <!-- Checkmark -->
             <div
-              v-if="form.startTime === slot.start_time"
-              class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-white rounded-full flex items-center justify-center"
+              v-if="isSlotSelected(slot.start_time)"
+              class="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center"
             >
-              <span class="text-q-primary text-[8px] font-bold">✓</span>
+              <span class="text-q-primary text-[9px] font-bold">✓</span>
             </div>
+            <div class="font-semibold text-xs leading-tight">{{ slot.start_time }}–{{ slot.end_time }}</div>
+            <!-- <div v-if="!slot.available" class="text-[10px] mt-0.5 opacity-60">Penuh</div> -->
+            <!-- <div
+              v-else-if="slot.price"
+              class="text-[10px] mt-0.5"
+              :class="isSlotSelected(slot.start_time) ? 'text-white/70' : 'text-q-text-3'"
+            >{{ formatRp(slot.price) }}</div> -->
           </button>
         </div>
 
-        <div v-else class="text-center py-8 text-q-text-3 text-sm">
-          Tidak ada slot tersedia untuk tanggal dan durasi ini
+        <div v-else class="text-center py-6 text-q-text-3 text-sm">
+          Tidak ada slot tersedia untuk tanggal ini
         </div>
 
-        <div class="flex gap-4 mt-3 text-xs text-q-text-3">
+        <!-- Jam yang dipilih -->
+        <div v-if="selectedSlots.length > 0" class="bg-q-card2 rounded-xl p-3 mb-3">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-white">Dipilih ({{ totalSelectedHours }} Jam)</span>
+            <button @click="clearAllSlots" class="text-red-400 text-xs hover:text-red-300 font-semibold transition-colors">Hapus Semua</button>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <div
+              v-for="slotStart in selectedSlots"
+              :key="slotStart"
+              class="flex items-center gap-1 bg-q-primary/20 text-q-primary-l border border-q-primary/30 rounded-full px-2.5 py-1 text-xs"
+            >
+              <span>{{ slotStart }}–{{ minsToTimeStr(timeToMinsStr(slotStart) + 60) }}</span>
+              <button @click="toggleSlot(slotStart)" class="hover:text-white ml-0.5">×</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex gap-4 text-xs text-q-text-3">
           <div class="flex items-center gap-1.5">
             <div class="w-3 h-3 bg-q-card border border-q-border rounded" /> Tersedia
           </div>
@@ -216,18 +230,21 @@
 
     <!-- ── SECTION 5: PEMBAYARAN ───────────────────────────── -->
     <Transition name="slide-down">
-      <section v-if="form.startTime" class="booking-section">
+      <section v-if="selectedSlots.length > 0" class="booking-section">
         <SectionHeader :num="5" title="Pembayaran" desc="Periksa ringkasan dan pilih metode bayar" />
 
         <!-- Ringkasan -->
         <div class="bg-q-card2 rounded-xl p-3 mb-3 space-y-2 text-sm">
-          <SummaryRow label="Cabang"      :value="selectedStore?.name" />
-          <SummaryRow label="Ruangan"     :value="selectedRoom?.name" />
-          <SummaryRow label="Tanggal"     :value="formatDate(form.date)" />
-          <SummaryRow
-            label="Jam Bermain"
-            :value="`${form.startTime} – ${endTime} (${form.durationHours} Jam)`"
-          />
+          <SummaryRow label="Cabang"  :value="selectedStore?.name" />
+          <SummaryRow label="Ruangan" :value="selectedRoom?.name" />
+          <SummaryRow label="Tanggal" :value="formatDate(form.date)" />
+          <div class="flex justify-between gap-4">
+            <span class="text-q-text-2">Jam Bermain</span>
+            <span class="text-white font-medium text-right">
+              {{ selectedSlots[0] }}–{{ minsToTimeStr(timeToMinsStr(selectedSlots[selectedSlots.length - 1]) + 60) }}
+              ({{ totalSelectedHours }} Jam)
+            </span>
+          </div>
           <template v-if="selectedVoucher">
             <div class="flex justify-between text-sm text-green-400">
               <span>Diskon Voucher ({{ selectedVoucher.code }})</span>
@@ -238,31 +255,67 @@
             <span class="text-q-text-2">Total Pembayaran</span>
             <span class="text-q-primary font-bold text-lg">{{ formatRp(finalPrice) }}</span>
           </div>
-          <div v-if="selectedSlotBreakdown" class="pt-2 border-t border-q-border/50">
-            <div class="text-q-primary text-xs">{{ selectedSlotBreakdown }}</div>
-          </div>
         </div>
 
-        <!-- Play Credits toggle -->
-        <div
-          v-if="authStore.isMember && availableCredits > 0"
-          class="bg-q-card border border-q-primary/30 rounded-xl p-3 mb-3 flex items-center gap-3"
-        >
-          <div class="w-10 h-10 rounded-full bg-q-primary/20 flex items-center justify-center text-lg">🎮</div>
-          <div class="flex-1">
-            <div class="text-white font-semibold text-sm">Gunakan Play Credits</div>
-            <div class="text-q-text-2 text-xs">Tersedia {{ availableCredits }} jam</div>
-          </div>
-          <button
-            @click="form.useCredits = !form.useCredits"
-            class="w-11 h-6 rounded-full transition-all relative"
-            :class="form.useCredits ? 'bg-q-primary' : 'bg-q-card2 border border-q-border'"
-          >
+        <!-- Play Credits Option -->
+        <div v-if="authStore.isLoggedIn" class="mb-3">
+          <label class="block text-xs text-q-text-2 mb-2 font-medium">Gunakan Play Credits?</label>
+
+          <div v-if="loadingCredits" class="text-xs text-q-text-3 py-1">Memuat credits...</div>
+
+          <template v-else>
+            <!-- Ada credits valid untuk tanggal ini -->
+            <template v-if="validCredits.length > 0">
+              <div
+                v-for="cr in validCredits"
+                :key="cr.id"
+                @click="selectCredit(cr)"
+                class="payment-card mb-2"
+                :class="selectedCreditId === cr.id ? 'payment-card-active' : ''"
+              >
+                <div class="w-9 h-9 rounded-xl bg-q-primary/20 flex items-center justify-center flex-shrink-0 text-lg">🎮</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-white font-semibold text-sm">{{ cr.package?.name }}</div>
+                  <div class="text-q-text-3 text-xs">
+                    Sisa {{ cr.remaining_hours }} Jam ·
+                    Berlaku s/d {{ formatDateCompact(cr.expires_at) }}
+                  </div>
+                </div>
+                <div
+                  class="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
+                  :class="selectedCreditId === cr.id ? 'border-q-primary bg-q-primary' : 'border-q-border'"
+                >
+                  <div v-if="selectedCreditId === cr.id" class="w-2 h-2 rounded-full bg-white" />
+                </div>
+              </div>
+            </template>
+
+            <!-- Ada credits tapi semua tidak berlaku untuk tanggal ini -->
             <div
-              class="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all"
-              :class="form.useCredits ? 'right-0.5' : 'left-0.5'"
-            />
-          </button>
+              v-else-if="hasExpiredCreditsForDate"
+              class="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-sm mb-2"
+            >
+              <div class="text-red-400 font-semibold mb-1">⚠️ Play Credits Tidak Berlaku</div>
+              <div class="text-red-300/80 text-xs">
+                Credits kamu sudah kadaluarsa untuk tanggal
+                {{ formatDateCompact(form.date) }}. Gunakan metode pembayaran lain
+                atau beli paket credits baru.
+              </div>
+            </div>
+
+            <!-- Tidak punya credits sama sekali -->
+            <div v-else class="text-xs text-q-text-3">
+              Tidak ada play credits aktif.
+              <RouterLink to="/credits" class="text-q-primary underline ml-1">Beli credits →</RouterLink>
+            </div>
+          </template>
+        </div>
+
+        <!-- Divider sebelum metode bayar biasa -->
+        <div v-if="!selectedCreditId" class="flex items-center gap-2 mb-3">
+          <div class="flex-1 h-px bg-q-border" />
+          <span class="text-q-text-3 text-xs">atau bayar dengan</span>
+          <div class="flex-1 h-px bg-q-border" />
         </div>
 
         <!-- Voucher (opsional) — single row trigger -->
@@ -273,36 +326,36 @@
             @click="showVoucherSheet = true"
             class="w-full flex items-center gap-2.5 bg-q-card2 border border-q-border hover:border-q-primary rounded-xl p-2.5 transition-all text-left"
           >
-            <div class="w-8 h-8 rounded-lg bg-[#7C3AED]/20 flex items-center justify-center text-base flex-shrink-0">🏷️</div>
+            <div class="w-8 h-8 rounded-lg bg-q-primary/20 flex items-center justify-center text-base flex-shrink-0">🏷️</div>
             <div class="flex-1">
               <div class="text-q-text-2 text-sm">Punya voucher?</div>
             </div>
-            <span class="text-[#A78BFA] text-xs font-semibold">{{ availableVouchers.length }} tersedia →</span>
+            <span class="text-q-primary-l text-xs font-semibold">{{ availableVouchers.length }} tersedia →</span>
           </button>
 
           <!-- Voucher selected: compact chip with remove -->
           <div
             v-else
-            class="flex items-center gap-2.5 bg-[#7C3AED]/10 border border-[#7C3AED]/40 rounded-xl p-2.5"
+            class="flex items-center gap-2.5 bg-q-primary/10 border border-q-primary/40 rounded-xl p-2.5"
           >
-            <div class="w-8 h-8 rounded-lg bg-[#7C3AED]/20 flex items-center justify-center text-base flex-shrink-0">🏷️</div>
+            <div class="w-8 h-8 rounded-lg bg-q-primary/20 flex items-center justify-center text-base flex-shrink-0">🏷️</div>
             <div class="flex-1 min-w-0">
               <div class="text-white text-sm font-semibold truncate">{{ selectedVoucher.name }}</div>
-              <div class="text-[#A78BFA] text-xs font-bold">
+              <div class="text-q-primary-l text-xs font-bold">
                 <span v-if="selectedVoucher.discount_type === 'percentage'">{{ selectedVoucher.discount_value }}% OFF</span>
                 <span v-else>Hemat {{ formatRp(selectedVoucher.discount_value) }}</span>
-                <span class="text-[#6B7280] font-normal"> · {{ selectedVoucher.code }}</span>
+                <span class="text-q-text-3 font-normal"> · {{ selectedVoucher.code }}</span>
               </div>
             </div>
             <button
               @click="onSelectVoucher(null)"
-              class="w-6 h-6 rounded-full bg-[#252540] hover:bg-red-500/30 flex items-center justify-center text-[#9CA3AF] hover:text-red-400 text-xs transition-all flex-shrink-0"
+              class="w-6 h-6 rounded-full bg-q-border hover:bg-red-500/30 flex items-center justify-center text-q-text-2 hover:text-red-400 text-xs transition-all flex-shrink-0"
             >✕</button>
           </div>
         </div>
 
-        <!-- Metode pembayaran -->
-        <div class="mb-3">
+        <!-- Metode pembayaran — disembunyikan jika pakai Play Credits -->
+        <div v-if="!selectedCreditId" class="mb-3">
           <label class="block text-xs text-q-text-2 mb-2 font-medium">Metode Pembayaran</label>
           <div class="space-y-1.5">
             <label
@@ -338,7 +391,7 @@
 
         <button
           @click="handleBooking"
-          :disabled="!form.paymentMethod || initiating"
+          :disabled="(!form.paymentMethod && !selectedCreditId) || initiating"
           class="w-full py-4 bg-q-primary hover:bg-q-primary-d text-white font-bold rounded-2xl shadow-purple transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
         >
           <span v-if="initiating">⏳ Memproses...</span>
@@ -346,7 +399,7 @@
         </button>
 
         <p class="text-center text-q-text-3 text-xs mt-3">
-          Kamu akan diarahkan ke halaman pembayaran Xendit yang aman
+          Kamu akan diarahkan ke halaman pembayaran yang aman
         </p>
       </section>
     </Transition>
@@ -361,34 +414,36 @@
         <div class="absolute inset-0 bg-black/60" @click="showVoucherSheet = false" />
 
         <!-- Sheet -->
-        <div class="relative w-full max-w-lg bg-[#11111E] border-t border-[#252540] rounded-t-2xl pb-safe z-10">
+        <div class="relative w-full max-w-lg bg-q-card border-t border-q-border rounded-t-2xl pb-safe z-10">
 
-          <!-- Handle + header -->
-          <div class="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#252540]">
+          <!-- Header -->
+          <div class="flex items-center justify-between px-5 pt-4 pb-3 border-b border-q-border">
             <div>
               <div class="text-white font-bold">Pilih Voucher</div>
-              <div class="text-[#9CA3AF] text-xs mt-0.5">{{ availableVouchers.length }} voucher tersedia</div>
+              <div class="text-q-text-2 text-xs mt-0.5">{{ availableVouchers.length }} voucher tersedia</div>
             </div>
             <button
               @click="showVoucherSheet = false"
-              class="w-7 h-7 rounded-full bg-[#252540] flex items-center justify-center text-[#9CA3AF] hover:text-white text-sm transition-colors"
+              class="w-7 h-7 rounded-full bg-q-border flex items-center justify-center text-q-text-2 hover:text-white text-sm transition-colors"
             >✕</button>
           </div>
 
           <!-- List -->
-          <div class="overflow-y-auto max-h-[60vh] divide-y divide-[#1E1E30]">
-            <!-- Option: tidak pakai -->
+          <div class="overflow-y-auto max-h-[60vh] divide-y divide-q-border">
+            <!-- Tidak pakai voucher -->
             <div
               @click="onSelectVoucher(null); showVoucherSheet = false"
-              class="flex items-center gap-3 px-5 py-3.5 hover:bg-[#181828] cursor-pointer transition-colors"
+              class="flex items-center gap-3 px-5 py-3.5 hover:bg-q-card2 cursor-pointer transition-colors"
             >
-              <div class="w-9 h-9 rounded-xl bg-[#181828] border border-[#252540] flex items-center justify-center text-base flex-shrink-0">💵</div>
+              <div class="w-9 h-9 rounded-xl bg-q-card2 border border-q-border flex items-center justify-center text-base flex-shrink-0">💵</div>
               <div class="flex-1">
                 <div class="text-white text-sm font-semibold">Tidak pakai voucher</div>
-                <div class="text-[#6B7280] text-xs">Bayar harga normal</div>
+                <div class="text-q-text-3 text-xs">Bayar harga normal</div>
               </div>
-              <div class="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
-                :class="!selectedVoucher ? 'border-[#7C3AED] bg-[#7C3AED]' : 'border-[#252540]'">
+              <div
+                class="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
+                :class="!selectedVoucher ? 'border-q-primary bg-q-primary' : 'border-q-border'"
+              >
                 <div v-if="!selectedVoucher" class="w-2 h-2 rounded-full bg-white" />
               </div>
             </div>
@@ -398,28 +453,29 @@
               v-for="v in availableVouchers"
               :key="v.voucher_id"
               @click="onSelectVoucher(v); showVoucherSheet = false"
-              class="flex items-center gap-3 px-5 py-3.5 hover:bg-[#181828] cursor-pointer transition-colors"
+              class="flex items-center gap-3 px-5 py-3.5 hover:bg-q-card2 cursor-pointer transition-colors"
             >
-              <div class="w-9 h-9 rounded-xl bg-[#7C3AED]/20 flex items-center justify-center text-base flex-shrink-0">🏷️</div>
+              <div class="w-9 h-9 rounded-xl bg-q-primary/20 flex items-center justify-center text-base flex-shrink-0">🏷️</div>
               <div class="flex-1 min-w-0">
                 <div class="text-white text-sm font-semibold truncate">{{ v.name }}</div>
                 <div class="flex items-center gap-2 mt-0.5">
-                  <span class="text-[#A78BFA] text-xs font-bold">
+                  <span class="text-q-primary-l text-xs font-bold">
                     <template v-if="v.discount_type === 'percentage'">{{ v.discount_value }}% OFF</template>
                     <template v-else>Hemat {{ formatRp(v.discount_value) }}</template>
                   </span>
-                  <span class="text-[#6B7280] text-xs">· {{ v.code }}</span>
-                  <span v-if="v.min_purchase > 0" class="text-[#6B7280] text-[10px]">· min {{ formatRp(v.min_purchase) }}</span>
+                  <span class="text-q-text-3 text-xs">· {{ v.code }}</span>
+                  <span v-if="v.min_purchase > 0" class="text-q-text-3 text-[10px]">· min {{ formatRp(v.min_purchase) }}</span>
                 </div>
               </div>
-              <div class="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
-                :class="selectedVoucher?.voucher_id === v.voucher_id ? 'border-[#7C3AED] bg-[#7C3AED]' : 'border-[#252540]'">
+              <div
+                class="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
+                :class="selectedVoucher?.voucher_id === v.voucher_id ? 'border-q-primary bg-q-primary' : 'border-q-border'"
+              >
                 <div v-if="selectedVoucher?.voucher_id === v.voucher_id" class="w-2 h-2 rounded-full bg-white" />
               </div>
             </div>
           </div>
 
-          <!-- Safe area spacer -->
           <div class="h-4" />
         </div>
       </div>
@@ -428,11 +484,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, defineComponent, h } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, reactive, computed, watch, onMounted, defineComponent, h } from 'vue'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
-import { getPublicStores, getPublicRoomTemplates, getAvailability, initiateBooking, getMyVouchersForBooking } from '@/api/bookingApi'
+import { getPublicStores, getPublicRoomTemplates, getBookingSlots, initiateBooking, getMyVouchersForBooking } from '@/api/bookingApi'
+import { getMyCredits } from '@/api/authApi'
 
 // ── Inline sub-components ──────────────────────────────────────
 const SectionHeader = defineComponent({
@@ -459,10 +516,9 @@ const SummaryRow = defineComponent({
 })
 
 // ── Constants ──────────────────────────────────────────────────
-const STEPS            = ['Cabang', 'Ruangan', 'Tanggal', 'Jam', 'Bayar']
-const DURATION_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-const PAYMENT_METHODS  = [
-  { value: 'qris',    label: 'QRIS',                desc: 'Bayar cepat dengan semua e-wallet',  icon: '⬛', bg: 'rgba(124,58,237,0.15)' },
+const STEPS = ['Cabang', 'Ruangan', 'Tanggal', 'Jam', 'Bayar']
+const PAYMENT_METHODS = [
+  { value: 'qris',    label: 'QRIS',                desc: 'Bayar cepat dengan semua e-wallet',  icon: '⬛', bg: 'rgba(2,130,222,0.15)'   },
   { value: 'ewallet', label: 'E-Wallet',             desc: 'OVO, GoPay, DANA, ShopeePay',        icon: '💳', bg: 'rgba(14,165,233,0.15)'  },
   { value: 'va',      label: 'Virtual Account',      desc: 'BCA, Mandiri, BNI, BRI, Permata',    icon: '🏦', bg: 'rgba(16,185,129,0.15)'  },
   { value: 'card',    label: 'Kartu Debit / Kredit', desc: 'Visa, Mastercard, JCB',              icon: '💳', bg: 'rgba(245,158,11,0.15)'  },
@@ -476,20 +532,22 @@ const toast     = useToast()
 
 const stores        = ref([])
 const roomTemplates = ref([])
-const slots         = ref([])
+const hourlySlots   = ref([])
+const selectedSlots = ref([])   // array of start_time strings e.g. ["10:00","11:00"]
 const loadingRooms  = ref(false)
 const loadingSlots  = ref(false)
 const initiating    = ref(false)
-const estimatedPrice   = ref(0)
-const availableCredits = ref(0)
-const availableVouchers  = ref([])
-const selectedVoucher    = ref(null)
-const discountAmount     = ref(0)
-const showVoucherSheet   = ref(false)
-const finalPrice        = computed(() => {
-  if (!selectedVoucher.value || !estimatedPrice.value) return estimatedPrice.value
-  return Math.max(0, estimatedPrice.value - discountAmount.value)
-})
+const availableCredits  = ref(0)
+const availableVouchers = ref([])
+const selectedVoucher   = ref(null)
+const discountAmount    = ref(0)
+const showVoucherSheet  = ref(false)
+
+// Play Credits — per-booking validity
+const allMyCredits     = ref([])   // semua credits milik customer (termasuk yang expired)
+const validCredits     = ref([])   // credits yang valid untuk tanggal booking ini
+const selectedCreditId = ref('')
+const loadingCredits   = ref(false)
 
 const today = new Date().toISOString().split('T')[0]
 
@@ -497,19 +555,31 @@ const form = reactive({
   storeId:       '',
   roomTemplateId: 0,
   date:          '',
-  durationHours: 0,
-  startTime:     '',
   paymentMethod: '',
   useCredits:    false,
   voucherID:     '',
 })
 
 // ── Computed ───────────────────────────────────────────────────
+const totalSelectedHours = computed(() => selectedSlots.value.length)
+
+const totalPrice = computed(() =>
+  selectedSlots.value.reduce((sum, slotStart) => {
+    const slot = hourlySlots.value.find(s => s.start_time === slotStart)
+    return sum + (slot?.price || 0)
+  }, 0)
+)
+
+const finalPrice = computed(() => {
+  if (!selectedVoucher.value || !totalPrice.value) return totalPrice.value
+  return Math.max(0, totalPrice.value - discountAmount.value)
+})
+
 const currentStep = computed(() => {
   if (!form.storeId)        return 0
   if (!form.roomTemplateId) return 1
-  if (!form.date || !form.durationHours) return 2
-  if (!form.startTime)      return 3
+  if (!form.date)           return 2
+  if (!selectedSlots.value.length) return 3
   return 4
 })
 
@@ -518,23 +588,17 @@ const selectedRoom  = computed(() => roomTemplates.value.find((r) => r.id === fo
 
 const storeHours = computed(() => {
   const hours = selectedStore.value?.operating_hours?.[0]
-  if (!hours) return '10:00 - 02:00'
-  return `${hours.open_time?.slice(0, 5)} - ${hours.close_time?.slice(0, 5)}`
-})
-
-const endTime = computed(() => {
-  if (!form.startTime || !form.durationHours) return ''
-  const [h, m] = form.startTime.split(':').map(Number)
-  const total  = h * 60 + m + form.durationHours * 60
-  const endH   = Math.floor(total / 60) % 24
-  const endM   = total % 60
-  return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
+  if (!hours) return '10:00 – 02:00'
+  return `${hours.open_time?.slice(0, 5)} – ${hours.close_time?.slice(0, 5)}`
 })
 
 // ── Handlers ───────────────────────────────────────────────────
 const onStoreChange = async () => {
-  Object.assign(form, { roomTemplateId: 0, date: '', durationHours: 0, startTime: '' })
-  slots.value = []
+  Object.assign(form, { roomTemplateId: 0, date: '' })
+  hourlySlots.value   = []
+  selectedSlots.value = []
+  availableVouchers.value = []
+  selectedVoucher.value   = null
   if (!form.storeId) return
   loadingRooms.value = true
   try {
@@ -548,43 +612,125 @@ const onStoreChange = async () => {
 }
 
 const onRoomSelect = (room) => {
-  form.roomTemplateId = room.id
-  Object.assign(form, { date: '', durationHours: 0, startTime: '' })
-  slots.value = []
-  estimatedPrice.value = room.min_price || 0
+  form.roomTemplateId     = room.id
+  form.date               = ''
+  hourlySlots.value       = []
+  selectedSlots.value     = []
+  availableVouchers.value = []
+  selectedVoucher.value   = null
 }
 
 const onDateChange = () => {
-  form.startTime = ''
-  if (form.durationHours) loadAvailability()
+  selectedSlots.value     = []
+  availableVouchers.value = []
+  selectedVoucher.value   = null
+  discountAmount.value    = 0
+  form.voucherID          = ''
+  if (form.date && form.roomTemplateId && form.storeId) {
+    loadHourlySlots()
+  }
 }
 
-const onDurationSelect = (h) => {
-  form.durationHours = h
-  form.startTime = ''
-  if (form.date) loadAvailability()
+const loadHourlySlots = async () => {
+  if (!form.storeId || !form.roomTemplateId || !form.date) return
+  loadingSlots.value  = true
+  hourlySlots.value   = []
+  selectedSlots.value = []
+  try {
+    const { data } = await getBookingSlots({
+      store_id:         form.storeId,
+      room_template_id: form.roomTemplateId,
+      date:             form.date,
+    })
+    hourlySlots.value = data.data?.slots || []
+
+    // Fetch vouchers applicable for this store+room
+    if (authStore.isLoggedIn) {
+      try {
+        const { data: vData } = await getMyVouchersForBooking({
+          store_id:         form.storeId,
+          room_template_id: form.roomTemplateId,
+        })
+        availableVouchers.value = vData.data || []
+      } catch {}
+    }
+  } catch {
+    toast.error('Gagal memuat jadwal')
+  } finally {
+    loadingSlots.value = false
+  }
 }
 
-const selectedSlotBreakdown = ref('')
+const toggleSlot = (slotStart) => {
+  const slot = hourlySlots.value.find(s => s.start_time === slotStart)
+  if (!slot?.available) return
+  const idx = selectedSlots.value.indexOf(slotStart)
+  if (idx === -1) {
+    selectedSlots.value.push(slotStart)
+    selectedSlots.value.sort()
+  } else {
+    selectedSlots.value.splice(idx, 1)
+  }
+  // Recalculate voucher discount based on new total
+  if (selectedVoucher.value) recalcDiscount(selectedVoucher.value)
+}
 
-const onSlotSelect = async (slot) => {
-  if (!slot.available) return
-  form.startTime              = slot.start_time
-  estimatedPrice.value        = slot.price     || 0
-  selectedSlotBreakdown.value = slot.breakdown || ''
-  selectedVoucher.value       = null
-  discountAmount.value        = 0
-  availableVouchers.value     = []
-  form.voucherID              = ''
+const clearAllSlots = () => {
+  selectedSlots.value = []
+  onSelectVoucher(null)
+}
 
-  if (authStore.isLoggedIn) {
-    try {
-      const { data } = await getMyVouchersForBooking({
-        store_id:         form.storeId,
-        room_template_id: form.roomTemplateId,
-      })
-      availableVouchers.value = data.data || []
-    } catch {}
+const isSlotSelected = (slotStart) => selectedSlots.value.includes(slotStart)
+
+// ── Play Credits ───────────────────────────────────────────────
+const hasExpiredCreditsForDate = computed(() => {
+  if (!form.date || !authStore.isLoggedIn) return false
+  return allMyCredits.value.length > 0 && validCredits.value.length === 0
+})
+
+const fetchValidCredits = async () => {
+  if (!authStore.isLoggedIn || !form.date || selectedSlots.value.length === 0) return
+  loadingCredits.value = true
+  try {
+    const { data } = await getMyCredits()
+    allMyCredits.value = data.data || []
+    const bookingDate  = new Date(form.date)
+
+    validCredits.value = allMyCredits.value.filter(cr => {
+      const expiresAt = new Date(cr.expires_at)
+      return expiresAt >= bookingDate
+        && cr.remaining_hours >= totalSelectedHours.value
+        && cr.is_active
+    })
+  } catch {
+    validCredits.value = []
+  } finally {
+    loadingCredits.value = false
+  }
+}
+
+const selectCredit = (cr) => {
+  if (selectedCreditId.value === cr.id) {
+    // Toggle off
+    selectedCreditId.value = ''
+    form.paymentMethod     = ''
+  } else {
+    selectedCreditId.value = cr.id
+    form.paymentMethod     = 'play_credits'
+  }
+}
+
+// Re-fetch valid credits whenever selected slots change
+watch(selectedSlots, fetchValidCredits)
+
+const recalcDiscount = (voucher) => {
+  if (!voucher) { discountAmount.value = 0; return }
+  if (voucher.discount_type === 'percentage') {
+    let disc = totalPrice.value * voucher.discount_value / 100
+    if (voucher.max_discount && disc > voucher.max_discount) disc = voucher.max_discount
+    discountAmount.value = disc
+  } else {
+    discountAmount.value = Math.min(voucher.discount_value, totalPrice.value)
   }
 }
 
@@ -597,69 +743,60 @@ const onSelectVoucher = (voucher) => {
   }
   selectedVoucher.value = voucher
   form.voucherID        = voucher.voucher_id
-
-  if (voucher.discount_type === 'percentage') {
-    let disc = estimatedPrice.value * voucher.discount_value / 100
-    if (voucher.max_discount && disc > voucher.max_discount) disc = voucher.max_discount
-    discountAmount.value = disc
-  } else {
-    discountAmount.value = Math.min(voucher.discount_value, estimatedPrice.value)
-  }
-}
-
-const loadAvailability = async () => {
-  if (!form.storeId || !form.roomTemplateId || !form.date || !form.durationHours) return
-  loadingSlots.value = true
-  slots.value = []
-  try {
-    const { data } = await getAvailability({
-      store_id:         form.storeId,
-      room_template_id: form.roomTemplateId,
-      date:             form.date,
-      duration_hours:   form.durationHours,
-    })
-    slots.value          = data.data?.slots         || []
-    estimatedPrice.value = data.data?.estimated_price || 0
-  } catch {
-    toast.error('Gagal memuat ketersediaan slot')
-  } finally {
-    loadingSlots.value = false
-  }
+  recalcDiscount(voucher)
 }
 
 const handleBooking = async () => {
   if (!authStore.isLoggedIn) { router.push('/login'); return }
+  if (selectedSlots.value.length === 0) {
+    toast.error('Pilih minimal 1 jam bermain')
+    return
+  }
   initiating.value = true
   try {
     const { data } = await initiateBooking({
       store_id:         form.storeId,
       room_template_id: form.roomTemplateId,
       booking_date:     form.date,
-      start_time:       form.startTime,
-      duration_hours:   form.durationHours,
+      selected_slots:   selectedSlots.value,
       payment_method:   form.paymentMethod,
-      voucher_id:       form.voucherID || undefined,
+      voucher_id:       form.voucherID      || undefined,
+      credit_id:        selectedCreditId.value || undefined,
     })
+
+    if (form.paymentMethod === 'play_credits') {
+      // Langsung ke success page — tidak perlu Xendit
+      router.push({
+        name:  'PaymentSuccess',
+        query: { booking_code: data.data?.booking_code },
+      })
+      return
+    }
+
     const invoiceURL = data.data?.invoice_url
-    const holdId     = data.data?.hold_id  // ← ambil hold_id dari response
-
+    const holdId     = data.data?.hold_id
     if (invoiceURL) {
-      // Simpan hold_id ke sessionStorage sebelum redirect
-      // (karena setelah redirect ke mock page, data response hilang)
       if (holdId) sessionStorage.setItem('quantum_hold_id', holdId)
-
       window.location.href = invoiceURL
     }
   } catch (e) {
     const msg = e?.response?.data?.message || 'Gagal membuat booking'
     toast.error(msg)
-    if (msg.includes('tersedia')) loadAvailability()
   } finally {
     initiating.value = false
   }
 }
 
 // ── Helpers ────────────────────────────────────────────────────
+const timeToMinsStr = (t) => {
+  if (!t || t.length < 5) return 0
+  return parseInt(t.slice(0, 2)) * 60 + parseInt(t.slice(3, 5))
+}
+const minsToTimeStr = (m) => {
+  m = ((m % (24 * 60)) + 24 * 60) % (24 * 60)
+  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')
+}
+
 const getImgUrl = (url) => {
   if (!url) return '/placeholder.jpg'
   if (url.startsWith('http')) return url
@@ -672,6 +809,9 @@ const formatRp = (price) =>
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : ''
 
+const formatDateCompact = (d) =>
+  d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+
 const formatCapacity = (min, max) =>
   min === max ? `${max} Orang` : `Hingga ${max} Orang`
 
@@ -680,7 +820,16 @@ onMounted(async () => {
   try {
     const { data } = await getPublicStores()
     stores.value = data.data || []
-    if (route.query.store_id) form.storeId = route.query.store_id
+
+    // Pre-fill dari query (e.g. dari RoomDetailView)
+    if (route.query.store_id) {
+      form.storeId = route.query.store_id
+      await onStoreChange()
+    }
+    if (route.query.room_template_id && roomTemplates.value.length) {
+      const rt = roomTemplates.value.find(r => String(r.id) === String(route.query.room_template_id))
+      if (rt) onRoomSelect(rt)
+    }
   } catch {
     toast.error('Gagal memuat daftar cabang')
   }
@@ -709,7 +858,7 @@ onMounted(async () => {
   appearance: none;
 }
 .booking-select:focus { border-color: var(--color-q-primary); }
-.booking-select option { background: #0F0F1E; }
+.booking-select option { background: #020B2E; }
 
 .payment-card {
   display: flex; align-items: center; gap: 12px;
@@ -717,7 +866,7 @@ onMounted(async () => {
   border-radius: 12px; padding: 12px; cursor: pointer; transition: all 0.15s;
 }
 .payment-card:hover    { border-color: var(--color-q-primary); }
-.payment-card-active   { border-color: var(--color-q-primary); background: rgba(124, 58, 237, 0.05); }
+.payment-card-active   { border-color: var(--color-q-primary); background: rgba(2, 130, 222, 0.05); }
 
 .slide-down-enter-active { transition: all 0.3s ease; }
 .slide-down-enter-from   { opacity: 0; transform: translateY(-12px); }

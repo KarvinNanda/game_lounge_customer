@@ -8,18 +8,18 @@
 
 @import 'tailwindcss';
 
-/* ── Color palette — dark gaming, high readability ── */
+/* ── Color palette — dark blue gaming ── */
 @theme {
   /* Backgrounds */
-  --color-q-bg:        #070710;
-  --color-q-card:      #0F0F1E;
-  --color-q-card2:     #17172A;
-  --color-q-border:    #28284A;
+  --color-q-bg:        #010214;
+  --color-q-card:      #020B2E;
+  --color-q-card2:     #0B2350;
+  --color-q-border:    #063271;
 
-  /* Brand */
-  --color-q-primary:   #8B5CF6;
-  --color-q-primary-l: #A78BFA;
-  --color-q-primary-d: #6D28D9;
+  /* Brand — Quantum Blue */
+  --color-q-primary:   #0282DE;
+  --color-q-primary-l: #19B9EE;
+  --color-q-primary-d: #0160A8;
 
   /* Accents */
   --color-q-gold:      #FBBF24;
@@ -27,21 +27,21 @@
   --color-q-red:       #F87171;
 
   /* Text — all pass WCAG AA on card backgrounds */
-  --color-q-text:      #F0F0FF;
-  --color-q-text-2:    #B8B8D8;
-  --color-q-text-3:    #7878A8;
+  --color-q-text:      #F0F4FF;
+  --color-q-text-2:    #C9D4E2;
+  --color-q-text-3:    #7A8BA8;
 
   --font-family-sans: 'Inter', system-ui, sans-serif;
 
-  --shadow-purple:    0 0 24px rgba(139,92,246,0.35);
-  --shadow-purple-sm: 0 0 12px rgba(139,92,246,0.25);
+  --shadow-purple:    0 0 24px rgba(2,130,222,0.35);
+  --shadow-purple-sm: 0 0 12px rgba(2,130,222,0.20);
   --shadow-card:      0 4px 32px rgba(0,0,0,0.5);
 }
 
 * { box-sizing: border-box; }
 
 body {
-  background-color: #070710;
+  background-color: #010214;
   color: #F0F0FF;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -52,8 +52,15 @@ body {
 }
 
 ::-webkit-scrollbar       { width: 4px; }
-::-webkit-scrollbar-track { background: #0F0F1E; }
-::-webkit-scrollbar-thumb { background: #8B5CF6; border-radius: 2px; }
+::-webkit-scrollbar-track { background: #020B2E; }
+::-webkit-scrollbar-thumb { background: #0282DE; border-radius: 2px; }
 
 .swiper-pagination-bullet        { background: rgba(255,255,255,0.35) !important; }
-.swiper-pagination-bullet-active { background: #8B5CF6 !important; width: 20px !important; border-radius: 4px !important; }
+.swiper-pagination-bullet-active { background: #0282DE !important; width: 20px !important; border-radius: 4px !important; }
+
+/* ── Mobile: padding bawah untuk bottom nav (60px) ── */
+@media (max-width: 768px) {
+  main {
+    padding-bottom: 4rem; /* 64px — ruang untuk bottom nav */
+  }
+}

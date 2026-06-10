@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="max-w-2xl mx-auto px-4 py-6">
 
     <!-- Header -->
@@ -8,7 +8,7 @@
         <p class="text-[#9CA3AF] text-sm mt-0.5">Paket credits yang kamu miliki</p>
       </div>
       <RouterLink to="/credits">
-        <button class="px-3 py-1.5 bg-[#7C3AED] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-full transition-colors">
+        <button class="px-3 py-1.5 bg-[#0282DE] hover:bg-[#0160A8] text-white text-xs font-bold rounded-full transition-colors">
           + Beli Credits
         </button>
       </RouterLink>
@@ -25,7 +25,7 @@
       <div class="text-white font-bold mb-2">Belum ada Play Credits</div>
       <p class="text-[#9CA3AF] text-sm mb-5">Beli paket credits dan hemat lebih banyak saat booking.</p>
       <RouterLink to="/credits">
-        <button class="px-5 py-2.5 bg-[#7C3AED] text-white font-bold rounded-xl text-sm">Beli Credits Sekarang</button>
+        <button class="px-5 py-2.5 bg-[#0282DE] text-white font-bold rounded-xl text-sm">Beli Credits Sekarang</button>
       </RouterLink>
     </div>
 
@@ -61,7 +61,7 @@
               <!-- Mini progress bar -->
               <div class="mt-1.5 h-1 bg-[#252540] rounded-full overflow-hidden w-full max-w-[160px]">
                 <div
-                  class="h-full bg-[#7C3AED] rounded-full"
+                  class="h-full bg-[#0282DE] rounded-full"
                   :style="{ width: `${cr.used_percent}%` }"
                 />
               </div>
@@ -70,7 +70,7 @@
 
             <!-- Center: remaining hours badge -->
             <div class="flex-shrink-0 text-center">
-              <div class="text-[#A78BFA] font-black text-base leading-none">{{ cr.remaining_hours }}</div>
+              <div class="text-[#19B9EE] font-black text-base leading-none">{{ cr.remaining_hours }}</div>
               <div class="text-[#6B7280] text-[10px]">jam</div>
             </div>
 
