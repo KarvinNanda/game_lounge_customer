@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <nav class="sticky top-0 z-50 bg-[#080810]/80 backdrop-blur-xl border-b border-[#252540]">
     <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
 
@@ -49,7 +49,7 @@
         <div v-if="authStore.isLoggedIn" class="relative">
           <button
             @click="showBell = !showBell"
-            class="w-9 h-9 flex items-center justify-center rounded-full bg-[#11111E] border border-[#252540] text-[#9CA3AF] hover:text-white hover:border-[#7C3AED] transition-all"
+            class="w-9 h-9 flex items-center justify-center rounded-full bg-[#11111E] border border-[#252540] text-[#9CA3AF] hover:text-white hover:border-[#0282DE] transition-all"
           >
             🔔
           </button>
@@ -83,7 +83,7 @@
 
         <!-- Login button (guest) -->
         <RouterLink v-if="!authStore.isLoggedIn" to="/login">
-          <button class="px-4 py-2 bg-[#7C3AED] hover:bg-[#5B21B6] text-white text-sm font-semibold rounded-full transition-colors">
+          <button class="px-4 py-2 bg-[#0282DE] hover:bg-[#0160A8] text-white text-sm font-semibold rounded-full transition-colors">
             Login
           </button>
         </RouterLink>
@@ -92,9 +92,9 @@
         <div v-else class="relative">
           <button
             @click="showProfile = !showProfile"
-            class="flex items-center gap-2 bg-[#11111E] border border-[#252540] rounded-full pl-1 pr-3 py-1 hover:border-[#7C3AED] transition-all"
+            class="flex items-center gap-2 bg-[#11111E] border border-[#252540] rounded-full pl-1 pr-3 py-1 hover:border-[#0282DE] transition-all"
           >
-            <div class="w-7 h-7 rounded-full bg-[#7C3AED] flex items-center justify-center text-white font-bold text-xs">
+            <div class="w-7 h-7 rounded-full bg-[#0282DE] flex items-center justify-center text-white font-bold text-xs">
               {{ authStore.customer?.name?.[0]?.toUpperCase() }}
             </div>
             <span class="hidden md:block text-sm font-medium text-white">
@@ -114,6 +114,13 @@
               class="flex items-center gap-2 px-4 py-3 text-sm text-[#9CA3AF] hover:bg-[#181828] hover:text-white transition-colors"
             >
               👤 Profil Saya
+            </RouterLink>
+            <RouterLink
+              to="/my-fnb-orders"
+              @click="showProfile = false"
+              class="flex items-center gap-2 px-4 py-3 text-sm text-[#9CA3AF] hover:bg-[#181828] hover:text-white transition-colors"
+            >
+              🍽️ Pesanan FnB
             </RouterLink>
             <div class="border-t border-[#252540]" />
             <button

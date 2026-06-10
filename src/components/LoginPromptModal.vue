@@ -73,8 +73,10 @@
 <script setup>
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 
-const route = useRoute()
+const route     = useRoute()
+const authStore = useAuthStore()
 
 defineProps({ modelValue: Boolean })
 defineEmits(['update:modelValue'])
@@ -84,9 +86,12 @@ const BENEFITS = [
   { icon: '⭐', label: 'Simpan data & riwayat kamu' },
 ]
 
-const redirectQuery = computed(() => ({
-  redirect: route.fullPath !== '/login' ? route.fullPath : undefined,
-}))
+// Gunakan pendingPath dari authStore kalau ada (ditetapkan oleh router guard / navTo)
+// Fallback ke route.fullPath kalau modal dibuka secara manual dari dalam halaman
+const redirectQuery = computed(() => {
+  const target = authStore.pendingPath || (route.fullPath !== '/login' ? route.fullPath : '')
+  return target ? { redirect: target } : {}
+})
 </script>
 
 <style scoped>
