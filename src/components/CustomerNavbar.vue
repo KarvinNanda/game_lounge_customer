@@ -1,5 +1,5 @@
-﻿<template>
-  <nav class="sticky top-0 z-50 bg-[#080810]/80 backdrop-blur-xl border-b border-[#252540]">
+<template>
+  <nav class="sticky top-0 z-50 bg-[#080810]/80 backdrop-blur-xl border-b border-[#252540] animate-fade-in-down">
     <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
 
       <!-- Logo -->
@@ -12,32 +12,36 @@
       <div class="hidden md:flex items-center gap-6">
         <RouterLink
           to="/"
-          class="text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors"
+          class="relative text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors group"
           :class="{ '!text-white': $route.path === '/' }"
         >
           Home
+          <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#0282DE] transition-all duration-300 group-hover:w-full" :class="{ 'w-full': $route.path === '/' }"></span>
         </RouterLink>
         <template v-if="authStore.isLoggedIn">
           <button
             @click="navTo('/my-bookings')"
-            class="text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors"
+            class="relative text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors group"
             :class="{ '!text-white': $route.path === '/my-bookings' }"
           >
             My Bookings
+            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#0282DE] transition-all duration-300 group-hover:w-full" :class="{ 'w-full': $route.path === '/my-bookings' }"></span>
           </button>
           <button
             @click="navTo('/my-credits')"
-            class="text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors"
+            class="relative text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors group"
             :class="{ '!text-white': $route.path === '/my-credits' }"
           >
             Play Credits
+            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#0282DE] transition-all duration-300 group-hover:w-full" :class="{ 'w-full': $route.path === '/my-credits' }"></span>
           </button>
           <button
             @click="navTo('/promo')"
-            class="text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors"
+            class="relative text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors group"
             :class="{ '!text-white': $route.path === '/promo' }"
           >
             Promo
+            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#0282DE] transition-all duration-300 group-hover:w-full" :class="{ 'w-full': $route.path === '/promo' }"></span>
           </button>
         </template>
       </div>
@@ -83,7 +87,7 @@
 
         <!-- Login button (guest) -->
         <RouterLink v-if="!authStore.isLoggedIn" to="/login">
-          <button class="px-4 py-2 bg-[#0282DE] hover:bg-[#0160A8] text-white text-sm font-semibold rounded-full transition-colors">
+          <button class="px-4 py-2 bg-[#0282DE] hover:bg-[#0160A8] text-white text-sm font-semibold rounded-full transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(2,130,222,0.4)]">
             Login
           </button>
         </RouterLink>

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="min-h-screen">
 
     <!-- ── HERO BANNER SLIDER ──────────────────────────────────── -->
@@ -11,22 +11,23 @@
         :loop="banners.length > 1"
         class="w-full"
       >
-        <SwiperSlide v-for="banner in banners" :key="banner.id">
+        <SwiperSlide v-for="(banner, index) in banners" :key="banner.id">
           <div
-            class="relative w-full h-[320px] md:h-[440px] cursor-pointer overflow-hidden"
+            class="relative w-full h-[320px] md:h-[440px] cursor-pointer overflow-hidden group"
             @click="$router.push(`/banner/${banner.id}`)"
           >
             <img
               :src="getImgUrl(banner.image_url)"
               :alt="banner.title"
-              class="w-full h-full object-cover"
+              class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+              :class="index === 0 ? 'animate-fade-in' : ''"
             />
             <div class="absolute inset-0 bg-gradient-to-b from-transparent via-q-bg/30 to-q-bg" />
-            <div class="absolute inset-0 flex flex-col justify-end p-6 md:p-10">
-              <h1 class="text-3xl md:text-5xl font-black text-white leading-tight mb-2">
+            <div class="absolute inset-0 flex flex-col justify-end p-6 md:p-10 animate-fade-in-up delay-200">
+              <h1 class="text-3xl md:text-5xl font-black text-white leading-tight mb-2 drop-shadow-lg">
                 {{ banner.title }}
               </h1>
-              <p v-if="banner.subtitle" class="text-q-text-2 text-sm md:text-base mb-4">
+              <p v-if="banner.subtitle" class="text-q-text-2 text-sm md:text-base mb-4 drop-shadow">
                 {{ banner.subtitle }}
               </p>
             </div>
@@ -42,20 +43,21 @@
       <section class="py-6">
         <div class="grid grid-cols-3 gap-2 sm:gap-3">
           <div
-            v-for="action in QUICK_ACTIONS"
+            v-for="(action, index) in QUICK_ACTIONS"
             :key="action.label"
             @click="handleQuickAction(action)"
-            class="bg-q-card border border-q-border rounded-2xl p-3 sm:p-4
-                   cursor-pointer hover:border-q-primary hover:bg-q-card2 transition-all group"
+            class="bg-q-card glass-panel rounded-2xl p-3 sm:p-4
+                   cursor-pointer hover:border-q-primary hover:bg-q-card2 transition-all group animate-fade-in-up hover:-translate-y-1"
+            :style="`animation-delay: ${index * 150}ms;`"
           >
-            <div class="text-2xl sm:text-3xl mb-2 sm:mb-3">{{ action.icon }}</div>
-            <div class="font-bold text-white text-xs sm:text-sm mb-1 leading-tight">{{ action.label }}</div>
+            <div class="text-2xl sm:text-3xl mb-2 sm:mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">{{ action.icon }}</div>
+            <div class="font-bold text-white text-xs sm:text-sm mb-1 leading-tight group-hover:text-[#19B9EE] transition-colors">{{ action.label }}</div>
             <div class="text-q-text-3 text-[10px] sm:text-xs mb-3 sm:mb-4 leading-relaxed hidden sm:block">
               {{ action.desc }}
             </div>
             <div
               class="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center
-                     text-white text-xs sm:text-sm transition-transform group-hover:translate-x-1 mt-2 sm:mt-0"
+                     text-white text-xs sm:text-sm transition-transform duration-300 group-hover:translate-x-2 mt-2 sm:mt-0 shadow-lg"
               :style="{ background: action.color }"
             >
               →
@@ -100,37 +102,38 @@
             class="room-swiper"
             @swiper="onRoomSwiper"
           >
-            <SwiperSlide v-for="room in recommendedRooms" :key="room.id">
+            <SwiperSlide v-for="(room, index) in recommendedRooms" :key="room.id">
               <div
                 @click="$router.push(`/room/${room.id}`)"
-                class="bg-q-card border border-q-border rounded-2xl overflow-hidden
-                       cursor-pointer hover:border-q-primary transition-all group h-full"
+                class="glass-panel rounded-2xl overflow-hidden
+                       cursor-pointer transition-all duration-300 group h-full hover:-translate-y-2 hover:shadow-[0_12px_40px_rgba(2,130,222,0.2)] animate-fade-in-up"
+                :style="`animation-delay: ${index * 100}ms;`"
               >
                 <!-- Gambar -->
                 <div class="relative h-40 bg-q-card2 overflow-hidden">
                   <img v-if="room.image_url"
                     :src="getImgUrl(room.image_url)" :alt="room.name"
-                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  <div v-else class="w-full h-full flex items-center justify-center text-4xl">🎮</div>
+                    class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  <div v-else class="w-full h-full flex items-center justify-center text-4xl transition-transform duration-500 group-hover:scale-110">🎮</div>
 
                   <!-- Badge kapasitas -->
                   <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-sm
-                              text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
+                              text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm">
                     Hingga {{ room.capacity_max }} Orang
                   </div>
 
                   <!-- Badge Favorit -->
                   <div v-if="isFavorite(room.id)"
-                    class="absolute top-2 right-2 bg-amber-400 text-black
+                    class="absolute top-2 right-2 bg-amber-400/90 backdrop-blur-sm text-black
                            text-[10px] font-black px-2 py-0.5 rounded-full
-                           flex items-center gap-0.5 shadow-md">
+                           flex items-center gap-0.5 shadow-[0_0_10px_rgba(251,191,36,0.6)] animate-pulse-slow">
                     ⭐ Favorit
                   </div>
                 </div>
 
                 <!-- Info -->
-                <div class="p-3">
-                  <div class="text-white font-semibold text-sm truncate">{{ room.name }}</div>
+                <div class="p-3 transition-colors duration-300 group-hover:bg-[#020B2E]/60">
+                  <div class="text-white font-semibold text-sm truncate group-hover:text-[#19B9EE] transition-colors">{{ room.name }}</div>
                   <div class="text-q-text-3 text-xs mt-0.5">
                     <span v-if="room.min_price">
                       Mulai <span class="text-white font-bold">{{ formatRpShort(room.min_price) }}</span> / jam
@@ -166,28 +169,29 @@
           class="flex gap-3 overflow-x-auto px-4 pb-2 scroll-smooth hide-scrollbar"
           style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
           <div
-            v-for="room in recommendedRooms"
+            v-for="(room, index) in recommendedRooms"
             :key="room.id"
             @click="$router.push(`/room/${room.id}`)"
-            class="flex-shrink-0 w-44 bg-q-card border border-q-border rounded-2xl
-                   overflow-hidden cursor-pointer hover:border-q-primary transition-all"
+            class="flex-shrink-0 w-44 glass-panel rounded-2xl
+                   overflow-hidden cursor-pointer transition-all duration-300 group hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(2,130,222,0.2)] animate-fade-in-up"
+            :style="`animation-delay: ${index * 100}ms;`"
           >
             <div class="relative h-28 bg-q-card2 overflow-hidden">
               <img v-if="room.image_url" :src="getImgUrl(room.image_url)" :alt="room.name"
-                class="w-full h-full object-cover" />
-              <div v-else class="w-full h-full flex items-center justify-center text-3xl">🎮</div>
-              <div class="absolute top-2 left-2 bg-black/60 text-white text-[10px]
-                          font-medium px-2 py-0.5 rounded-full whitespace-nowrap">
+                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+              <div v-else class="w-full h-full flex items-center justify-center text-3xl transition-transform duration-500 group-hover:scale-110">🎮</div>
+              <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px]
+                          font-medium px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm">
                 Hingga {{ room.capacity_max }} Orang
               </div>
               <div v-if="isFavorite(room.id)"
-                class="absolute top-2 right-2 bg-amber-400 text-black
-                       text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap">
+                class="absolute top-2 right-2 bg-amber-400/90 backdrop-blur-sm text-black
+                       text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap shadow-[0_0_10px_rgba(251,191,36,0.6)] animate-pulse-slow">
                 ⭐ Favorit
               </div>
             </div>
-            <div class="p-3">
-              <div class="text-white font-semibold text-sm truncate">{{ room.name }}</div>
+            <div class="p-3 transition-colors duration-300 group-hover:bg-[#020B2E]/60">
+              <div class="text-white font-semibold text-sm truncate group-hover:text-[#19B9EE] transition-colors">{{ room.name }}</div>
               <div class="text-q-text-3 text-xs mt-0.5">
                 <span v-if="room.min_price">
                   Mulai <span class="text-white font-bold">{{ formatRpShort(room.min_price) }}</span> / jam
@@ -206,12 +210,12 @@
 
       <!-- ── FEATURE HIGHLIGHTS ──────────────────────────────────── -->
       <section class="py-4 pb-8">
-        <div class="bg-q-card border border-q-border rounded-2xl p-4">
+        <div class="glass-panel rounded-2xl p-4 animate-fade-in-up delay-300">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div v-for="feature in FEATURES" :key="feature.label" class="flex items-center gap-3">
-              <div class="text-2xl">{{ feature.icon }}</div>
+            <div v-for="(feature, index) in FEATURES" :key="feature.label" class="flex items-center gap-3 group">
+              <div class="text-2xl transition-transform duration-300 group-hover:scale-125 group-hover:rotate-6">{{ feature.icon }}</div>
               <div>
-                <div class="text-white text-xs font-semibold">{{ feature.label }}</div>
+                <div class="text-white text-xs font-semibold group-hover:text-[#19B9EE] transition-colors">{{ feature.label }}</div>
                 <div class="text-q-text-3 text-[11px]">{{ feature.desc }}</div>
               </div>
             </div>
@@ -221,8 +225,8 @@
 
       <!-- ── SOCIAL MEDIA ────────────────────────────────────────── -->
       <section class="py-4 pb-10">
-        <div class="bg-q-card border border-q-border rounded-2xl p-5 text-center">
-          <div class="text-white font-bold mb-1">Ikuti Kami</div>
+        <div class="glass-panel rounded-2xl p-5 text-center animate-fade-in-up delay-400">
+          <div class="text-white font-bold mb-1 tracking-wide">Ikuti Kami</div>
           <div class="text-q-text-3 text-sm mb-4">Update game & promo terbaru!</div>
           <div class="flex items-center justify-center gap-4">
             <a
@@ -231,9 +235,9 @@
               :href="social.href"
               target="_blank"
               rel="noopener noreferrer"
-              :class="['w-10 h-10 rounded-full flex items-center justify-center text-white hover:scale-110 transition-transform', social.bg]"
+              :class="['w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110 hover:shadow-[0_0_15px_rgba(255,255,255,0.3)]', social.bg]"
             >
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <svg class="w-5 h-5 transition-transform duration-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path :d="social.svgPath" />
               </svg>
             </a>
