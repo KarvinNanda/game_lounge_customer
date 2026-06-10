@@ -1,47 +1,47 @@
 <template>
   <!-- Hanya tampil di mobile (md ke atas: hidden) -->
   <nav class="fixed bottom-0 left-0 right-0 z-50 md:hidden
-              bg-[#010214]/95 backdrop-blur-xl border-t border-[#063271]">
+              bg-[#010214]/95 backdrop-blur-xl border-t border-[#063271] animate-fade-in-up">
     <div class="flex items-end justify-around px-2" style="height:60px; padding-bottom:8px;">
 
       <!-- Home -->
       <RouterLink to="/"
-        class="nav-btn"
-        :class="route.path === '/' ? 'text-[#0282DE]' : 'text-[#7A8BA8]'">
+        class="nav-btn transition-all duration-300 hover:scale-110"
+        :class="route.path === '/' ? 'text-[#0282DE] scale-110' : 'text-[#7A8BA8]'">
         <span class="text-xl">🏠</span>
         <span class="nav-label">Home</span>
       </RouterLink>
 
       <!-- My Bookings -->
       <button @click="navTo('/my-bookings')"
-        class="nav-btn"
-        :class="route.path.startsWith('/my-bookings') ? 'text-[#0282DE]' : 'text-[#7A8BA8]'">
+        class="nav-btn transition-all duration-300 hover:scale-110"
+        :class="route.path.startsWith('/my-bookings') ? 'text-[#0282DE] scale-110' : 'text-[#7A8BA8]'">
         <span class="text-xl">📅</span>
         <span class="nav-label">My Booking</span>
       </button>
 
       <!-- Play Credits — tombol tengah lebih besar -->
-      <button @click="navTo('/my-credits')" class="nav-center">
+      <button @click="navTo('/my-credits')" class="nav-center group">
         <div class="w-12 h-12 rounded-full flex items-center justify-center text-2xl
-                    -mt-5 shadow-[0_0_20px_rgba(2,130,222,0.45)]"
+                    -mt-5 shadow-[0_0_20px_rgba(2,130,222,0.45)] animate-float transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_30px_rgba(2,130,222,0.6)]"
           style="background: linear-gradient(135deg, #0282DE, #0160A8);">
           🎮
         </div>
-        <span class="nav-label text-[#0282DE]">My Credits</span>
+        <span class="nav-label text-[#0282DE] transition-transform duration-300 group-hover:scale-105">My Credits</span>
       </button>
 
       <!-- Promo -->
       <button @click="navTo('/promo')"
-        class="nav-btn"
-        :class="route.path.startsWith('/promo') ? 'text-[#0282DE]' : 'text-[#7A8BA8]'">
+        class="nav-btn transition-all duration-300 hover:scale-110"
+        :class="route.path.startsWith('/promo') ? 'text-[#0282DE] scale-110' : 'text-[#7A8BA8]'">
         <span class="text-xl">🏷️</span>
         <span class="nav-label">Promo</span>
       </button>
 
       <!-- Profile -->
       <button @click="navTo('/profile')"
-        class="nav-btn"
-        :class="route.path.startsWith('/profile') ? 'text-[#0282DE]' : 'text-[#7A8BA8]'">
+        class="nav-btn transition-all duration-300 hover:scale-110"
+        :class="route.path.startsWith('/profile') ? 'text-[#0282DE] scale-110' : 'text-[#7A8BA8]'">
         <span class="text-xl">👤</span>
         <span class="nav-label">Profil</span>
       </button>
