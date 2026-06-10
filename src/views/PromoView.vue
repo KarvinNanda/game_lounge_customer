@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="max-w-2xl mx-auto px-4 py-6">
 
     <!-- Header -->
@@ -7,7 +7,7 @@
         <h1 class="text-2xl font-bold text-white">Promo Saya</h1>
         <p class="text-[#9CA3AF] text-sm mt-0.5">Voucher yang tersedia untuk kamu</p>
       </div>
-      <div v-if="vouchers.length" class="bg-[#7C3AED]/20 text-[#A78BFA] text-xs font-bold px-3 py-1.5 rounded-full">
+      <div v-if="vouchers.length" class="bg-[#0282DE]/20 text-[#19B9EE] text-xs font-bold px-3 py-1.5 rounded-full">
         {{ vouchers.length }} Voucher
       </div>
     </div>
@@ -47,7 +47,7 @@
           <div class="min-w-0">
             <div class="text-white font-semibold text-sm truncate">{{ v.name }}</div>
             <div class="flex items-center gap-2 mt-0.5">
-              <span class="text-[#7C3AED] text-xs font-bold tracking-wider">{{ v.code }}</span>
+              <span class="text-[#0282DE] text-xs font-bold tracking-wider">{{ v.code }}</span>
               <span v-if="v.min_purchase > 0" class="text-[#6B7280] text-[10px]">
                 · min {{ formatRp(v.min_purchase) }}
               </span>
@@ -56,7 +56,7 @@
 
           <!-- Center: discount badge -->
           <div class="flex-shrink-0">
-            <span class="bg-[#7C3AED]/20 text-[#A78BFA] text-xs font-black px-2.5 py-1 rounded-full whitespace-nowrap">
+            <span class="bg-[#0282DE]/20 text-[#19B9EE] text-xs font-black px-2.5 py-1 rounded-full whitespace-nowrap">
               <template v-if="v.discount_type === 'percentage'">{{ v.discount_value }}% OFF</template>
               <template v-else>Rp {{ formatRpNum(v.discount_value) }}</template>
             </span>
