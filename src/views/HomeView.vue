@@ -367,7 +367,7 @@ watch(() => authStore.customer?.favorite_room_types, () => buildRecommendations(
 const getImgUrl = (url) => {
   if (!url) return '/placeholder.jpg'
   if (url.startsWith('http')) return url
-  return (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080') + url
+  return (import.meta.env.VITE_API_URL?.replace('/api', '') || '') + url
 }
 
 // Format harga singkat: 15RB, 250RB, 1.5JT
