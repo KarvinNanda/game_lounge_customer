@@ -73,7 +73,7 @@ const showLoginPrompt = ref(false)
 const getImgUrl = (url) => {
   if (!url) return '/placeholder.jpg'
   if (url.startsWith('http')) return url
-  return (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8080') + url
+  return (import.meta.env.VITE_API_URL?.replace('/api', '') || '') + url
 }
 
 const handleCTA = () => {
