@@ -195,7 +195,7 @@ describe('HomeView', () => {
     await flushPromises()
 
     const authStore = useAuthStore()
-    authStore.setAuth('valid-token', { name: 'Alice', type: 'member' })
+    authStore.setAuth({ name: 'Alice', type: 'member' })
     await flushPromises()
 
     expect(authStore.showAuthModal).toBe(false)

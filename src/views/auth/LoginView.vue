@@ -116,7 +116,8 @@ const handleLogin = async () => {
   loading.value = true
   try {
     const { data } = await customerLogin(form)
-    authStore.setAuth(data.data.token, data.data.customer)
+    // Cookie httpOnly di-set otomatis oleh backend — body hanya berisi data customer
+    authStore.setAuth(data.data.customer)
     const name = data.data.customer?.name?.split(' ')[0] || 'Kamu'
     toast.success(`Selamat datang, ${name}! 🎮`)
     // sanitizeRedirect: hanya internal path — cegah open redirect (?redirect=//evil.com)

@@ -4,20 +4,22 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
 
 const defaultHeaders = { 'Content-Type': 'application/json' }
 
-// Authenticated API — attaches customer token automatically
-const api = axios.create({ baseURL: BASE_URL, timeout: 10000, headers: defaultHeaders })
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('customer_token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
+// ── Cookie-based auth (httpOnly) ────────────────────────────────────
+// Token TIDAK lagi disimpan/dibaca frontend. Backend set cookie
+// `customer_token` (HttpOnly; SameSite=Lax; Secure) saat login.
+// withCredentials: true → browser otomatis melampirkan cookie.
+const api = axios.create({
+  baseURL: BASE_URL,
+  timeout: 10000,
+  headers: defaultHeaders,
+  withCredentials: true,
 })
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('customer_token')
+      // Sesi habis / cookie invalid — bersihkan state customer lokal
       localStorage.removeItem('customer_data')
       // Hindari redirect loop kalau sudah di halaman login
       const currentPath = window.location?.pathname || ''
@@ -29,7 +31,13 @@ api.interceptors.response.use(
   }
 )
 
-// Public API — no auth header, for endpoints accessible without login
-export const publicApi = axios.create({ baseURL: BASE_URL, timeout: 10000, headers: defaultHeaders })
+// Public API — endpoint tanpa auth; tetap withCredentials agar konsisten
+// (mis. backend bisa refresh cookie di endpoint public jika perlu)
+export const publicApi = axios.create({
+  baseURL: BASE_URL,
+  timeout: 10000,
+  headers: defaultHeaders,
+  withCredentials: true,
+})
 
 export default api
