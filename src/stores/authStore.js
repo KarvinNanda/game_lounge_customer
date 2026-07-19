@@ -3,30 +3,34 @@ import { ref, computed } from 'vue'
 import { getCustomerMe } from '@/api/authApi'
 import { safeJsonParse } from '@/utils/security'
 
+// ── Cookie-based auth (httpOnly) ────────────────────────────────────
+// Token disimpan backend di cookie httpOnly — frontend tidak pernah
+// melihatnya. State login ditentukan dari keberadaan data customer,
+// dan divalidasi ulang ke server via fetchMe() saat app boot.
 export const useAuthStore = defineStore('customerAuth', () => {
-  const token    = ref(localStorage.getItem('customer_token') || '')
+  // Migrasi: bersihkan token lama era localStorage (tidak dipakai lagi)
+  localStorage.removeItem('customer_token')
+
   // safeJsonParse: data localStorage bisa korup/dimanipulasi — jangan sampai crash saat boot
   const customer = ref(safeJsonParse(localStorage.getItem('customer_data'), null))
 
-  const isLoggedIn = computed(() => !!token.value)
+  const isLoggedIn = computed(() => !!customer.value)
   const isMember   = computed(() => customer.value?.type === 'member')
 
-  const setAuth = (newToken, customerData) => {
-    token.value    = newToken
+  const setAuth = (customerData) => {
     customer.value = customerData
-    localStorage.setItem('customer_token', newToken)
     localStorage.setItem('customer_data', JSON.stringify(customerData))
   }
 
   const logout = () => {
-    token.value    = ''
     customer.value = null
-    localStorage.removeItem('customer_token')
     localStorage.removeItem('customer_data')
   }
 
+  // Validasi sesi ke server — cookie dilampirkan otomatis oleh browser.
+  // 401 → cookie invalid/expired → state lokal dibersihkan.
   const fetchMe = async () => {
-    if (!token.value) return
+    if (!customer.value) return
     try {
       const { data } = await getCustomerMe()
       customer.value = data.data
@@ -43,6 +47,6 @@ export const useAuthStore = defineStore('customerAuth', () => {
     showAuthModal.value = true
   }
 
-  return { token, customer, isLoggedIn, isMember, setAuth, logout, fetchMe,
+  return { customer, isLoggedIn, isMember, setAuth, logout, fetchMe,
            showAuthModal, pendingPath, openAuthModal }
 })

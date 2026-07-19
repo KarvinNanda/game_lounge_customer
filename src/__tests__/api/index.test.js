@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import api, { publicApi } from '@/api/index'
 
+// ── Cookie-based auth (httpOnly) ────────────────────────────────────
+// Kontrak baru: token TIDAK pernah disentuh frontend. Browser
+// melampirkan cookie via withCredentials — tidak ada Authorization
+// header, tidak ada customer_token di localStorage.
+
 describe('api/index', () => {
   it('exports api as the default export', () => {
     expect(api).toBeDefined()
@@ -20,7 +25,6 @@ describe('api/index', () => {
   })
 
   it('api base URL falls back to localhost when VITE_API_URL is not set', () => {
-    // axios instance stores the baseURL in its defaults
     expect(api.defaults.baseURL).toMatch(/localhost|\/api/)
   })
 
@@ -28,56 +32,42 @@ describe('api/index', () => {
     expect(publicApi.defaults.baseURL).toBe(api.defaults.baseURL)
   })
 
-  it('api has a request interceptor registered (attaches Bearer token)', async () => {
-    // Verify the interceptor exists by checking the handlers list
-    // axios stores request interceptors in interceptors.request.handlers
-    const handlers = api.interceptors.request.handlers
-    expect(handlers.length).toBeGreaterThan(0)
+  // ── withCredentials: cookie httpOnly dilampirkan otomatis ─────────
+
+  it('api sends credentials (cookie) with every request', () => {
+    expect(api.defaults.withCredentials).toBe(true)
   })
+
+  it('publicApi sends credentials (cookie) with every request', () => {
+    expect(publicApi.defaults.withCredentials).toBe(true)
+  })
+
+  // ── Tidak ada lagi Authorization header dari localStorage ─────────
+
+  it('api has NO request interceptor (no Bearer token handling)', () => {
+    const active = (api.interceptors.request.handlers || []).filter(Boolean)
+    expect(active).toHaveLength(0)
+  })
+
+  it('publicApi has no custom request interceptors', () => {
+    const active = (publicApi.interceptors.request.handlers || []).filter(Boolean)
+    expect(active).toHaveLength(0)
+  })
+
+  // ── 401 handling ──────────────────────────────────────────────────
 
   it('api has a response interceptor registered (handles 401)', () => {
     const handlers = api.interceptors.response.handlers
     expect(handlers.length).toBeGreaterThan(0)
   })
 
-  it('publicApi has no custom request interceptors', () => {
-    const handlers = publicApi.interceptors.request.handlers
-    // publicApi should have no registered interceptors (empty or null entries only)
-    const active = (handlers || []).filter(Boolean)
-    expect(active).toHaveLength(0)
-  })
-
-  it('api request interceptor adds Authorization header from localStorage', async () => {
-    localStorage.setItem('customer_token', 'test-bearer-token')
-
-    // Invoke the registered fulfillment handler directly
-    const handler = api.interceptors.request.handlers.find(Boolean)
-    const config = { headers: {} }
-    const result = handler.fulfilled(config)
-
-    expect(result.headers.Authorization).toBe('Bearer test-bearer-token')
-  })
-
-  it('api request interceptor does not add Authorization header when no token', async () => {
-    localStorage.removeItem('customer_token')
-
-    const handler = api.interceptors.request.handlers.find(Boolean)
-    const config = { headers: {} }
-    const result = handler.fulfilled(config)
-
-    expect(result.headers.Authorization).toBeUndefined()
-  })
-
-  it('api response interceptor clears localStorage on 401 and redirects', () => {
-    localStorage.setItem('customer_token', 'expired')
+  it('api response interceptor clears customer_data on 401 and redirects', () => {
     localStorage.setItem('customer_data', '{"name":"Test"}')
 
     const handler = api.interceptors.response.handlers.find(Boolean)
     const error = { response: { status: 401 } }
 
-    // The interceptor calls window.location.href = '/login' and returns a rejected promise
     return handler.rejected(error).catch(() => {
-      expect(localStorage.getItem('customer_token')).toBeNull()
       expect(localStorage.getItem('customer_data')).toBeNull()
       expect(window.location.href).toBe('/login')
     })

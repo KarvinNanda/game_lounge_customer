@@ -150,7 +150,7 @@ describe('BottomNav', () => {
     await router.isReady()
     const wrapper   = mount(BottomNav, { global: { plugins: [router, pinia] } })
     const authStore = useAuthStore()
-    authStore.setAuth('valid-token', { name: 'Alice' })
+    authStore.setAuth({ name: 'Alice' })
 
     const openSpy = vi.spyOn(authStore, 'openAuthModal')
     const buttons = wrapper.findAll('button')

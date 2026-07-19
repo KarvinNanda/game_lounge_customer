@@ -169,7 +169,7 @@ const handleSaveProfile = async () => {
   savingProfile.value = true
   try {
     const { data } = await updateCustomerProfile(form)
-    authStore.setAuth(authStore.token, data.data)
+    authStore.setAuth(data.data)
     toast.success('Profil berhasil diperbarui!')
   } catch (e) {
     toast.error(e?.response?.data?.message || 'Gagal menyimpan profil')
