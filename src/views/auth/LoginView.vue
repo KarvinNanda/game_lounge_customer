@@ -98,6 +98,7 @@ import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { customerLogin } from '@/api/authApi'
 import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
+import { sanitizeRedirect } from '@/utils/security'
 
 const router    = useRouter()
 const route     = useRoute()
@@ -118,8 +119,9 @@ const handleLogin = async () => {
     authStore.setAuth(data.data.token, data.data.customer)
     const name = data.data.customer?.name?.split(' ')[0] || 'Kamu'
     toast.success(`Selamat datang, ${name}! 🎮`)
-    const redirect = route.query.redirect
-    router.push(redirect && redirect !== '/login' ? String(redirect) : '/')
+    // sanitizeRedirect: hanya internal path — cegah open redirect (?redirect=//evil.com)
+    const target = sanitizeRedirect(route.query.redirect)
+    router.push(target === '/login' ? '/' : target)
   } catch (e) {
     error.value = e?.response?.data?.message || 'Email atau password salah'
     toast.error(error.value)

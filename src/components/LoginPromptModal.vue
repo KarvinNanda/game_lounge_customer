@@ -74,6 +74,7 @@
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { sanitizeRedirect } from '@/utils/security'
 
 const route     = useRoute()
 const authStore = useAuthStore()
@@ -87,9 +88,11 @@ const BENEFITS = [
 ]
 
 // Gunakan pendingPath dari authStore kalau ada (ditetapkan oleh router guard / navTo)
-// Fallback ke route.fullPath kalau modal dibuka secara manual dari dalam halaman
+// Fallback ke route.fullPath kalau modal dibuka secara manual dari dalam halaman.
+// sanitizeRedirect: hanya internal path yang lolos — nilai tidak aman → tanpa redirect param
 const redirectQuery = computed(() => {
-  const target = authStore.pendingPath || (route.fullPath !== '/login' ? route.fullPath : '')
+  const raw    = authStore.pendingPath || (route.fullPath !== '/login' ? route.fullPath : '')
+  const target = raw ? sanitizeRedirect(raw, '') : ''
   return target ? { redirect: target } : {}
 })
 </script>

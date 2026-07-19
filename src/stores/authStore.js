@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getCustomerMe } from '@/api/authApi'
+import { safeJsonParse } from '@/utils/security'
 
 export const useAuthStore = defineStore('customerAuth', () => {
   const token    = ref(localStorage.getItem('customer_token') || '')
-  const customer = ref(JSON.parse(localStorage.getItem('customer_data') || 'null'))
+  // safeJsonParse: data localStorage bisa korup/dimanipulasi — jangan sampai crash saat boot
+  const customer = ref(safeJsonParse(localStorage.getItem('customer_data'), null))
 
   const isLoggedIn = computed(() => !!token.value)
   const isMember   = computed(() => customer.value?.type === 'member')

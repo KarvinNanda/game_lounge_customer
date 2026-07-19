@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="min-h-screen">
 
     <!-- ── HERO BANNER SLIDER ──────────────────────────────────── -->
@@ -258,6 +258,7 @@ import { Autoplay, Pagination, Navigation } from 'swiper/modules'
 import { useAuthStore } from '@/stores/authStore'
 import { getBanners } from '@/api/bannerApi'
 import api from '@/api/index'
+import { getImgUrl } from '@/utils/security'
 
 const router    = useRouter()
 const authStore = useAuthStore()
@@ -364,11 +365,6 @@ watch(() => authStore.isLoggedIn, () => buildRecommendations())
 watch(() => authStore.customer?.favorite_room_types, () => buildRecommendations(), { deep: true })
 
 // ── Helpers ────────────────────────────────────────────────────
-const getImgUrl = (url) => {
-  if (!url) return '/placeholder.jpg'
-  if (url.startsWith('http')) return url
-  return (import.meta.env.VITE_API_URL?.replace('/api', '') || '') + url
-}
 
 // Format harga singkat: 15RB, 250RB, 1.5JT
 const formatRpShort = (price) => {

@@ -126,6 +126,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter }             from 'vue-router'
 import { useAuthStore }                    from '@/stores/authStore'
 import { getPublicStores, getRoomTemplateById, getPublicRoomTemplates } from '@/api/bookingApi'
+import { getImgUrl } from '@/utils/security'
 
 const route     = useRoute()
 const router    = useRouter()
@@ -175,12 +176,6 @@ const handleBookNow = () => {
       room_template_id: room.value.id,
     },
   })
-}
-
-const getImgUrl = (url) => {
-  if (!url) return '/placeholder.jpg'
-  if (url.startsWith('http')) return url
-  return (import.meta.env.VITE_API_URL?.replace('/api', '') || '') + url
 }
 
 const formatRp = (p) => 'Rp ' + Math.round(p || 0).toLocaleString('id-ID')

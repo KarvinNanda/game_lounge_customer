@@ -190,6 +190,50 @@ describe('LoginView', () => {
     expect(router.currentRoute.value.path).toBe('/booking')
   })
 
+  // ── Open redirect protection ─────────────────────────────────────────────────
+
+  it('BLOCKS absolute URL in redirect param (open redirect) — lands on "/"', async () => {
+    customerLogin.mockResolvedValue({
+      data: { data: { token: 'tok', customer: { name: 'Eve' } } },
+    })
+
+    const { wrapper, router } = await mountLogin({ redirect: 'https://evil.com/phish' })
+    await wrapper.find('input[type="email"]').setValue('e@test.com')
+    await wrapper.find('input[type="password"]').setValue('pass')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/')
+  })
+
+  it('BLOCKS protocol-relative URL (//evil.com) in redirect param — lands on "/"', async () => {
+    customerLogin.mockResolvedValue({
+      data: { data: { token: 'tok', customer: { name: 'Mallory' } } },
+    })
+
+    const { wrapper, router } = await mountLogin({ redirect: '//evil.com' })
+    await wrapper.find('input[type="email"]').setValue('m@test.com')
+    await wrapper.find('input[type="password"]').setValue('pass')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/')
+  })
+
+  it('redirect param "/login" resolves to "/" (no self-redirect loop)', async () => {
+    customerLogin.mockResolvedValue({
+      data: { data: { token: 'tok', customer: { name: 'Trent' } } },
+    })
+
+    const { wrapper, router } = await mountLogin({ redirect: '/login' })
+    await wrapper.find('input[type="email"]').setValue('t@test.com')
+    await wrapper.find('input[type="password"]').setValue('pass')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/')
+  })
+
   // ── Failed login ─────────────────────────────────────────────────────────────
 
   it('shows server error message on login failure', async () => {
