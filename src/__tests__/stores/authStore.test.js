@@ -35,6 +35,15 @@ describe('authStore', () => {
     expect(store.isLoggedIn).toBe(true)
   })
 
+  it('removes legacy localStorage tokens (customer_token & staff_token) on boot', () => {
+    localStorage.setItem('customer_token', 'legacy-customer')
+    localStorage.setItem('staff_token', 'legacy-staff')
+
+    useAuthStore()
+    expect(localStorage.getItem('customer_token')).toBeNull()
+    expect(localStorage.getItem('staff_token')).toBeNull()
+  })
+
   it('does not crash when customer_data in localStorage is corrupted JSON', () => {
     localStorage.setItem('customer_data', '{corrupted!!!')
 

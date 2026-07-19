@@ -8,8 +8,11 @@ import { safeJsonParse } from '@/utils/security'
 // melihatnya. State login ditentukan dari keberadaan data customer,
 // dan divalidasi ulang ke server via fetchMe() saat app boot.
 export const useAuthStore = defineStore('customerAuth', () => {
-  // Migrasi: bersihkan token lama era localStorage (tidak dipakai lagi)
+  // Migrasi: bersihkan token lama era localStorage (backend cookie-only,
+  // semua Bearer token sudah mati). staff_token ikut dibersihkan karena
+  // saat dev app admin bisa berbagi origin localhost:port yang sama.
   localStorage.removeItem('customer_token')
+  localStorage.removeItem('staff_token')
 
   // safeJsonParse: data localStorage bisa korup/dimanipulasi — jangan sampai crash saat boot
   const customer = ref(safeJsonParse(localStorage.getItem('customer_data'), null))
