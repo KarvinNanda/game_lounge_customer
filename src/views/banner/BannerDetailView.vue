@@ -61,6 +61,7 @@ import { useRoute, useRouter } from 'vue-router'
 import LoginPromptModal from '@/components/LoginPromptModal.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { getBannerById } from '@/api/bannerApi'
+import { getImgUrl } from '@/utils/security'
 
 const route     = useRoute()
 const router    = useRouter()
@@ -69,12 +70,6 @@ const authStore = useAuthStore()
 const banner          = ref(null)
 const loading         = ref(true)
 const showLoginPrompt = ref(false)
-
-const getImgUrl = (url) => {
-  if (!url) return '/placeholder.jpg'
-  if (url.startsWith('http')) return url
-  return (import.meta.env.VITE_API_URL?.replace('/api', '') || '') + url
-}
 
 const handleCTA = () => {
   if (!authStore.isLoggedIn) {

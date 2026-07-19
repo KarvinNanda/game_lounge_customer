@@ -19,7 +19,11 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('customer_token')
       localStorage.removeItem('customer_data')
-      window.location.href = '/login'
+      // Hindari redirect loop kalau sudah di halaman login
+      const currentPath = window.location?.pathname || ''
+      if (!currentPath.startsWith('/login')) {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }

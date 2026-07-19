@@ -84,7 +84,7 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import axios from 'axios'
+import { publicApi } from '@/api/index'
 
 const email     = ref('')
 const loading   = ref(false)
@@ -93,7 +93,7 @@ const submitted = ref(false)
 const handleSubmit = async () => {
   loading.value = true
   try {
-    await axios.post(`${import.meta.env.VITE_API_URL}/customer/forgot-password`, { email: email.value })
+    await publicApi.post('/customer/forgot-password', { email: email.value })
   } catch {
     // Selalu tampilkan sukses — jangan bocorkan apakah email terdaftar atau tidak
   } finally {

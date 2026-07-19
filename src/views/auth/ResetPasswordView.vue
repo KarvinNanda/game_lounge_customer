@@ -110,11 +110,11 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
-import axios from 'axios'
+import { publicApi } from '@/api/index'
 
 const route = useRoute()
-const token = route.params.token
-const BASE  = import.meta.env.VITE_API_URL
+// encodeURIComponent: token masuk ke URL path — cegah path traversal/injection
+const token = encodeURIComponent(String(route.params.token || ''))
 
 const validating   = ref(true)
 const tokenError   = ref(false)
@@ -126,7 +126,7 @@ const form         = reactive({ new_password: '', confirm_password: '' })
 
 onMounted(async () => {
   try {
-    await axios.get(`${BASE}/customer/reset-password/${token}/validate`)
+    await publicApi.get(`/customer/reset-password/${token}/validate`)
     validating.value = false
   } catch {
     validating.value = false
@@ -142,7 +142,7 @@ const handleReset = async () => {
   }
   saving.value = true
   try {
-    await axios.post(`${BASE}/customer/reset-password/${token}`, form)
+    await publicApi.post(`/customer/reset-password/${token}`, form)
     resetSuccess.value = true
   } catch (e) {
     formError.value = e?.response?.data?.message || 'Gagal mengubah password'

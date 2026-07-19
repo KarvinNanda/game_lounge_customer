@@ -32,6 +32,16 @@ describe('authStore', () => {
     expect(store.customer).toEqual({ name: 'Alice', type: 'member' })
   })
 
+  it('does not crash when customer_data in localStorage is corrupted JSON', () => {
+    localStorage.setItem('customer_token', 'tok')
+    localStorage.setItem('customer_data', '{corrupted!!!')
+
+    // Harus tetap bisa dibuat tanpa throw, customer fallback ke null
+    const store = useAuthStore()
+    expect(store.customer).toBeNull()
+    expect(store.token).toBe('tok')
+  })
+
   // ── Computed: isLoggedIn ─────────────────────────────────────────────────────
 
   it('isLoggedIn is false when token is empty', () => {
