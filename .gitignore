@@ -7,11 +7,11 @@ node_modules/
 dist/
 dist-ssr/
 
-# Environment files
-.env
+# Environment files — .local files tidak pernah masuk repo
 .env.local
 .env.*.local
-.env.production
+# .env, .env.development, .env.production boleh di-commit (tidak ada secret,
+# VITE_* di-bake ke bundle saat build oleh Vite)
 
 # Logs
 logs/

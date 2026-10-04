@@ -260,6 +260,7 @@ import { useAuthStore }       from '@/stores/authStore'
 import { useToast }           from '@/composables/useToast'
 import api                                                                from '@/api/index'
 import { getPublicStores, checkEventAvailability, initiateEventBooking } from '@/api/bookingApi'
+import { getImgUrl } from '@/utils/security'
 
 const router    = useRouter()
 const authStore = useAuthStore()
@@ -410,12 +411,6 @@ const timeToMins = (t) => {
 }
 
 const formatRp = (p) => 'Rp ' + Math.round(p || 0).toLocaleString('id-ID')
-
-const getImgUrl = (url) => {
-  if (!url) return ''
-  if (url.startsWith('http')) return url
-  return (import.meta.env.VITE_API_URL?.replace('/api', '') || '') + url
-}
 
 onMounted(async () => {
   try {

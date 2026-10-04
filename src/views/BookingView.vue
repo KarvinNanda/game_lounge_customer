@@ -490,6 +490,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
 import { getPublicStores, getPublicRoomTemplates, getBookingSlots, initiateBooking, getMyVouchersForBooking } from '@/api/bookingApi'
 import { getMyCredits } from '@/api/authApi'
+import { getImgUrl } from '@/utils/security'
 
 // ── Inline sub-components ──────────────────────────────────────
 const SectionHeader = defineComponent({
@@ -795,12 +796,6 @@ const timeToMinsStr = (t) => {
 const minsToTimeStr = (m) => {
   m = ((m % (24 * 60)) + 24 * 60) % (24 * 60)
   return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')
-}
-
-const getImgUrl = (url) => {
-  if (!url) return '/placeholder.jpg'
-  if (url.startsWith('http')) return url
-  return (import.meta.env.VITE_API_URL?.replace('/api', '') || '') + url
 }
 
 const formatRp = (price) =>

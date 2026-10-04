@@ -150,4 +150,27 @@ describe('LoginPromptModal', () => {
     const href = wrapper.find('a').attributes('href') || ''
     expect(href).toContain('my-bookings')
   })
+
+  // ── Open redirect protection ──────────────────────────────────────────────────
+
+  it('DROPS redirect param when pendingPath is an external URL (open redirect)', async () => {
+    const pinia  = createPinia()
+    setActivePinia(pinia)
+    const router = await makeRouter('/')
+    const wrapper = mount(LoginPromptModal, {
+      props: { modelValue: true },
+      global: {
+        plugins: [router, pinia],
+        stubs: { Teleport: true, Transition: false },
+      },
+      attachTo: document.body,
+    })
+
+    const authStore = useAuthStore()
+    authStore.openAuthModal('https://evil.com/phish')
+    await wrapper.vm.$nextTick()
+
+    const href = wrapper.find('a').attributes('href') || ''
+    expect(href).not.toContain('evil.com')
+  })
 })

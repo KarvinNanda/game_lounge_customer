@@ -130,7 +130,7 @@ describe('LoginView', () => {
 
   it('calls customerLogin with the form credentials', async () => {
     customerLogin.mockResolvedValue({
-      data: { data: { token: 'tok', customer: { name: 'Alice' } } },
+      data: { data: { customer: { name: 'Alice' } } },
     })
 
     const { wrapper } = await mountLogin()
@@ -150,7 +150,7 @@ describe('LoginView', () => {
     useToast.mockReturnValue(mockToast)
 
     customerLogin.mockResolvedValue({
-      data: { data: { token: 'tok', customer: { name: 'Alice Wonderland' } } },
+      data: { data: { customer: { name: 'Alice Wonderland' } } },
     })
 
     const { wrapper } = await mountLogin()
@@ -164,7 +164,7 @@ describe('LoginView', () => {
 
   it('redirects to "/" after login when no redirect param', async () => {
     customerLogin.mockResolvedValue({
-      data: { data: { token: 'tok', customer: { name: 'Bob' } } },
+      data: { data: { customer: { name: 'Bob' } } },
     })
 
     const { wrapper, router } = await mountLogin()
@@ -178,7 +178,7 @@ describe('LoginView', () => {
 
   it('redirects to the redirect query param after successful login', async () => {
     customerLogin.mockResolvedValue({
-      data: { data: { token: 'tok', customer: { name: 'Carol' } } },
+      data: { data: { customer: { name: 'Carol' } } },
     })
 
     const { wrapper, router } = await mountLogin({ redirect: '/booking' })
@@ -188,6 +188,50 @@ describe('LoginView', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.path).toBe('/booking')
+  })
+
+  // ── Open redirect protection ─────────────────────────────────────────────────
+
+  it('BLOCKS absolute URL in redirect param (open redirect) — lands on "/"', async () => {
+    customerLogin.mockResolvedValue({
+      data: { data: { customer: { name: 'Eve' } } },
+    })
+
+    const { wrapper, router } = await mountLogin({ redirect: 'https://evil.com/phish' })
+    await wrapper.find('input[type="email"]').setValue('e@test.com')
+    await wrapper.find('input[type="password"]').setValue('pass')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/')
+  })
+
+  it('BLOCKS protocol-relative URL (//evil.com) in redirect param — lands on "/"', async () => {
+    customerLogin.mockResolvedValue({
+      data: { data: { customer: { name: 'Mallory' } } },
+    })
+
+    const { wrapper, router } = await mountLogin({ redirect: '//evil.com' })
+    await wrapper.find('input[type="email"]').setValue('m@test.com')
+    await wrapper.find('input[type="password"]').setValue('pass')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/')
+  })
+
+  it('redirect param "/login" resolves to "/" (no self-redirect loop)', async () => {
+    customerLogin.mockResolvedValue({
+      data: { data: { customer: { name: 'Trent' } } },
+    })
+
+    const { wrapper, router } = await mountLogin({ redirect: '/login' })
+    await wrapper.find('input[type="email"]').setValue('t@test.com')
+    await wrapper.find('input[type="password"]').setValue('pass')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/')
   })
 
   // ── Failed login ─────────────────────────────────────────────────────────────

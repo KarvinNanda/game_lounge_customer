@@ -1,30 +1,39 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getCustomerMe } from '@/api/authApi'
+import { safeJsonParse } from '@/utils/security'
 
+// ── Cookie-based auth (httpOnly) ────────────────────────────────────
+// Token disimpan backend di cookie httpOnly — frontend tidak pernah
+// melihatnya. State login ditentukan dari keberadaan data customer,
+// dan divalidasi ulang ke server via fetchMe() saat app boot.
 export const useAuthStore = defineStore('customerAuth', () => {
-  const token    = ref(localStorage.getItem('customer_token') || '')
-  const customer = ref(JSON.parse(localStorage.getItem('customer_data') || 'null'))
+  // Migrasi: bersihkan token lama era localStorage (backend cookie-only,
+  // semua Bearer token sudah mati). staff_token ikut dibersihkan karena
+  // saat dev app admin bisa berbagi origin localhost:port yang sama.
+  localStorage.removeItem('customer_token')
+  localStorage.removeItem('staff_token')
 
-  const isLoggedIn = computed(() => !!token.value)
+  // safeJsonParse: data localStorage bisa korup/dimanipulasi — jangan sampai crash saat boot
+  const customer = ref(safeJsonParse(localStorage.getItem('customer_data'), null))
+
+  const isLoggedIn = computed(() => !!customer.value)
   const isMember   = computed(() => customer.value?.type === 'member')
 
-  const setAuth = (newToken, customerData) => {
-    token.value    = newToken
+  const setAuth = (customerData) => {
     customer.value = customerData
-    localStorage.setItem('customer_token', newToken)
     localStorage.setItem('customer_data', JSON.stringify(customerData))
   }
 
   const logout = () => {
-    token.value    = ''
     customer.value = null
-    localStorage.removeItem('customer_token')
     localStorage.removeItem('customer_data')
   }
 
+  // Validasi sesi ke server — cookie dilampirkan otomatis oleh browser.
+  // 401 → cookie invalid/expired → state lokal dibersihkan.
   const fetchMe = async () => {
-    if (!token.value) return
+    if (!customer.value) return
     try {
       const { data } = await getCustomerMe()
       customer.value = data.data
@@ -41,6 +50,6 @@ export const useAuthStore = defineStore('customerAuth', () => {
     showAuthModal.value = true
   }
 
-  return { token, customer, isLoggedIn, isMember, setAuth, logout, fetchMe,
+  return { customer, isLoggedIn, isMember, setAuth, logout, fetchMe,
            showAuthModal, pendingPath, openAuthModal }
 })
