@@ -42,11 +42,13 @@ cd game_lounge_customer
 npm install
 ```
 
-Buat file `.env` di root:
+Salin template env (file `.env.local` di-gitignore):
 
-```env
-VITE_API_URL=http://localhost:8080/api
+```bash
+cp .env.example .env.local
 ```
+
+Untuk production, `VITE_API_URL` dikirim sebagai build arg Docker (di-set di Coolify), bukan lewat file. Build production gagal kalau nilainya kosong.
 
 ---
 
