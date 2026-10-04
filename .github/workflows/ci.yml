@@ -53,6 +53,9 @@ jobs:
         env:
           # Prevent build failure on warnings treated as errors
           CI: false
+          # Placeholder: CI hanya memverifikasi build, dist-nya tidak di-deploy.
+          # URL asli di-set di Coolify supaya domain API tidak masuk GitHub.
+          VITE_API_URL: https://api.example.com/api
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

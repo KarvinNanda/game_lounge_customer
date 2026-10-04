@@ -104,7 +104,7 @@ describe('getImgUrl', () => {
 
   // ── Path relatif digabung origin API ────────────────────────────────────────
 
-  // Origin API mengikuti VITE_API_URL environment (vitest me-load .env)
+  // Origin API mengikuti VITE_API_URL dari vitest.config.js (test.env)
   const API_ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '')
 
   it('menggabungkan path relatif dengan origin API (tanpa /api)', () => {

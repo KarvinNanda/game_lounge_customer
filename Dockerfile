@@ -15,6 +15,9 @@ RUN npm ci --no-audit --no-fund
 
 COPY . .
 
+# File .env tidak ikut di repo. Coolify mengirim nilai ini sebagai build arg.
+# ARG hanya ada di stage builder, tidak terbawa ke image final.
+ARG VITE_API_URL
 RUN npm run build
 
 # ── Stage 2: Serve dengan Nginx ─────────────────────────────
