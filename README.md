@@ -1,6 +1,6 @@
 # Gaming Lounge — Customer App
 
-Frontend aplikasi customer untuk **Quantum Gaming Center**, sebuah platform booking ruangan game lounge berbasis web. Dibangun dengan **Vue 3 + Vite + Tailwind CSS v4**.
+Frontend aplikasi customer untuk **Quantum Gaming Center**: booking ruangan game lounge, private event (sewa satu cabang), top up play credits, dan pesan F&B. Dibangun dengan **Vue 3 + Vite + Tailwind CSS v4**. Backend: repo `game_lounge_be` (Go).
 
 ---
 
@@ -13,22 +13,23 @@ Frontend aplikasi customer untuk **Quantum Gaming Center**, sebuah platform book
 | Vue Router | ^4.6 | Client-side routing |
 | Pinia | ^3.0 | State management |
 | Tailwind CSS | ^4.3 | Utility-first styling via Vite plugin |
-| Axios | ^1.16 | HTTP client |
+| Axios | ^1.16 | HTTP client (cookie auth, `withCredentials`) |
+| lucide-vue-next | ^1.0 | Icon (tidak memakai emoji sebagai icon) |
 | Swiper.js | ^12.1 | Hero banner slider |
-| Vitest | ^4.1 | Unit testing |
-| @vue/test-utils | ^2.4 | Vue component testing |
-| Node.js | >=18 | Runtime requirement |
+| Inter + Space Grotesk | fontsource | Font di-self-host, tanpa Google Fonts |
+| Vitest + @vue/test-utils + jsdom | ^4.1 / ^2.4 | Unit & component test |
+| Node.js | 22 (CI), minimal 18 | Runtime |
 
 ---
 
 ## Commands
 
 ```bash
-npm run dev        # Dev server → http://localhost:5173
-npm run build      # Build production ke /dist
+npm run dev        # Dev server → http://localhost:5174
+npm run build      # Build production ke /dist (gagal kalau VITE_API_URL kosong)
 npm run preview    # Preview hasil build
 npm run test       # Unit test watch mode
-npm run test:run   # Unit test sekali jalan (CI)
+npm run test:run   # Unit test sekali jalan (dipakai CI)
 npm run coverage   # Coverage report
 ```
 
@@ -40,131 +41,240 @@ npm run coverage   # Coverage report
 git clone <repo-url>
 cd game_lounge_customer
 npm install
+cp .env.example .env.local   # .env.local di-gitignore
 ```
 
-Salin template env (file `.env.local` di-gitignore):
+| Variabel | Keterangan |
+|---|---|
+| `VITE_API_URL` | Base URL API, mis. `http://localhost:8080/api`. Wajib saat build production. |
+| `VITE_PAYMENT_HOSTS` | Host yang boleh jadi tujuan redirect invoice (pisah koma). Kosong = `checkout.xendit.co,checkout-staging.xendit.co`. |
+| `VITE_ENABLE_MOCK_PAYMENT` | `true` = aktifkan `/payment/mock` (dev/staging saja). Production: kosongkan. |
 
-```bash
-cp .env.example .env.local
-```
+Semua `VITE_*` di-bake ke bundle browser, jadi **jangan isi dengan secret**.
 
-Untuk production, `VITE_API_URL` dikirim sebagai build arg Docker (di-set di Coolify), bukan lewat file. Build production gagal kalau nilainya kosong.
+Backend lokal diharapkan jalan di `localhost:8080`. Cookie login di-set oleh backend, jadi origin frontend harus diizinkan di CORS backend.
+
+---
+
+## Deploy
+
+- `Dockerfile` multi-stage: build dengan `node:22-alpine`, serve dengan `nginx:1.27-alpine` (port 80).
+- `VITE_API_URL` dikirim sebagai **build arg** (di-set di Coolify), bukan lewat file. ARG hanya ada di stage builder.
+- `nginx.conf` mengirim security header: CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`.
+- Frontend bergantung pada kontrak API backend. **Deploy backend lebih dulu, atau bersamaan**, kalau ada perubahan endpoint.
+
+### CI (`.github/workflows/ci.yml`)
+
+Jalan di setiap push dan PR ke `main`: `npm ci` → `npm audit --omit=dev --audit-level=high` → `npm run test:run` → coverage → `npm run build` (dengan `VITE_API_URL` placeholder; artefak CI tidak di-deploy).
 
 ---
 
 ## Arsitektur
 
-### Entry & Bootstrap
+### Layout & Routing
 
-`src/main.js` menginstall Pinia + Router lalu mount App ke `#app`. Tidak ada global component registration — setiap komponen di-import secara lokal di file yang membutuhkannya.
+- `src/main.js` memasang Pinia + Router, lalu mount ke `#app`. Komponen di-import lokal, tidak ada global registration.
+- Semua halaman (kecuali halaman auth) memakai `src/layouts/CustomerLayout.vue`: `CustomerNavbar` (sticky, desktop nav + bell notifikasi), `RouterView`, dan `BottomNav` (hanya mobile, dengan safe area iPhone).
+- `src/router/guard.js` → `authGuard` untuk route ber-`meta.requiresAuth`:
+  - navigasi di dalam app → buka `LoginPromptModal`, user tetap di halaman sekarang;
+  - load pertama lewat URL (link dibagikan, kembali dari payment gateway) → `/login?redirect=<path>`.
+- `src/router/scroll.js` mengatur posisi scroll antar halaman.
 
-### Single Layout
+### Auth (cookie httpOnly)
 
-Semua halaman berbagi satu layout: `src/layouts/CustomerLayout.vue`. Layout ini terdiri dari:
-- `<CustomerNavbar />` — sticky top, desktop navigation + bell notifikasi + profile dropdown
-- `<RouterView />` — konten halaman, padding bawah `pb-20 md:pb-0` untuk mengakomodasi BottomNav mobile
-- `<BottomNav class="md:hidden" />` — navigasi tab bawah, hanya muncul di mobile
+- Backend menyimpan sesi di cookie `customer_token` (HttpOnly, SameSite=Lax, Secure). **Frontend tidak pernah membaca token.**
+- `src/stores/authStore.js` hanya menyimpan data profil di `localStorage` (`customer_data`) untuk tampilan. `isLoggedIn` = data customer ada; `isMember` = `customer.type === 'member'`.
+- `fetchMe()` memvalidasi sesi ke `GET /customer/me` saat app boot. Respons 401 menghapus state lokal.
+- Saat boot, token lama era `localStorage` (`customer_token`, `staff_token`) dibersihkan.
 
-`CustomerLayout.vue` juga memanggil `authStore.fetchMe()` di `onMounted` untuk refresh data customer jika sudah login.
+### API Layer (`src/api/`)
 
-### Routing & Auth Guard
+`index.js` membuat dua instance Axios dengan `withCredentials: true` dan timeout 10 detik:
 
-`src/router/index.js` memiliki `beforeEach` yang memeriksa `meta.requiresAuth`:
-- Jika route butuh auth dan user belum login → redirect ke `/login?redirect=<path>`
-- Setelah login berhasil, user diarahkan kembali ke halaman yang semula dituju via query `redirect`
+- **`api`**: untuk endpoint customer. Interceptor response: **setiap 401** menghapus `customer_data` lalu redirect ke `/login?redirect=<halaman asal>`. `LoginView` memfilter nilai `redirect` dengan `sanitizeRedirect` (hanya path internal, mencegah open redirect).
+- **`publicApi`**: untuk endpoint public, tanpa interceptor 401.
 
-Route tanpa `meta.requiresAuth` (Home, Booking, Credits) bisa diakses siapa saja — namun aksi di dalamnya (submit booking, purchase credits) tetap membutuhkan login dan akan memunculkan `LoginPromptModal`.
+| File | Isi |
+|---|---|
+| `authApi.js` | Login, me, logout, profil, ganti password, credits, vouchers, my bookings |
+| `bookingApi.js` | Stores, room templates, slot, quote booking, initiate booking, status pembayaran (`by-hold`), quote & initiate event |
+| `playCreditsApi.js` | Paket credits, initiate purchase, mock confirm |
+| `fnbApi.js` | Menu F&B, buat pesanan, daftar pesanan saya |
+| `bannerApi.js` | Banner promo (list & detail) |
+| `roomApi.js` / `storeApi.js` | Room recommendations / data cabang |
 
-### Auth Store
-
-`src/stores/authStore.js` (Pinia composition store) menyimpan `token` + `customer`:
-
-- `authStore.isLoggedIn` → `true` jika token tersedia
-- `authStore.isMember` → `true` jika `customer.type === 'member'` (untuk fitur Play Credits)
-- `setAuth(token, customerData)` → simpan ke store + `localStorage`
-- `logout()` → hapus store + `localStorage`
-- `fetchMe()` → `GET /customer/me`, refresh data customer; jika `401` otomatis logout
-
-Token dan data customer di-persist di `localStorage` dengan key `customer_token` dan `customer_data`.
-
-### API Layer
-
-`src/api/index.js` — dua Axios instance:
-
-**`api` (authenticated)** — untuk endpoint yang butuh login:
-- `baseURL`: `VITE_API_URL`, fallback ke `http://localhost:8080/api`
-- Token JWT dari `localStorage` diinjeksi otomatis di setiap request
-- Response `401` → hapus token + `localStorage` + redirect ke `/login`
-
-**`publicApi`** — untuk endpoint publik (tanpa token):
-- `baseURL` sama, tidak ada interceptor auth
-
-Setiap domain punya file sendiri di `src/api/`:
+### Composables (`src/composables/`)
 
 | File | Fungsi |
 |---|---|
-| `authApi.js` | Login, me, logout, update profil, ganti password, credits expiring, my credits, my bookings, vouchers |
-| `bookingApi.js` | Availability, stores, room templates, initiate booking, event booking, vouchers for booking |
-| `playCreditsApi.js` | Paket credits, initiate purchase, mock confirm |
-| `bannerApi.js` | Daftar banner promo |
-| `roomApi.js` | Room recommendations, room templates |
-| `storeApi.js` | Data cabang |
+| `useBookingForm.js` | Semua state + aksi halaman Booking (view dan step component hanya menampilkan) |
+| `useBookingQuote.js` | Harga booking dari server (`GET /public/booking/quote`) |
+| `useEventBooking.js` | Alur private event: cabang → jadwal → detail → bayar |
+| `useHoldConfirmation.js` | Polling status pembayaran setelah redirect Xendit |
+| `useCart.js` | Keranjang F&B |
+| `useFocusTrap.js` | Focus trap untuk modal/sheet |
+| `useToast.js` | Toast singleton (`success` / `error` / `info` / `warning`), dirender oleh `ToastContainer` |
 
-### Notifikasi Toast
+### Utils (`src/utils/`)
 
-`src/composables/useToast.js` — module-level singleton (bukan `provide/inject`):
+| File | Fungsi |
+|---|---|
+| `payment.js` | `redirectToInvoice` (satu-satunya jalan ke invoice; host divalidasi), `mockPaymentGuard`, countdown dari `expires_at` |
+| `security.js` | `sanitizeRedirect`, `safeJsonParse`, `getImgUrl` |
+| `dates.js` | `localISODate` (jangan pakai `toISOString` untuk tanggal lokal), `dateOnlyExpiryState` |
+| `format.js` | `formatRp`, format tanggal, kapasitas |
+| `slots.js` | Pemilihan slot jam (harus berurutan) |
+| `voucher.js` | Estimasi potongan voucher dari `total_price` server |
+| `radioKeys.js` | Navigasi keyboard untuk radio group |
 
-```js
-import { useToast } from '@/composables/useToast'
-const toast = useToast()
+---
 
-toast.success('Booking berhasil!')
-toast.error('Gagal memuat data')
-toast.info('Sesi kamu akan segera berakhir')
-toast.warning('Credits hampir habis')
+## Design System
+
+- Token warna, font, shadow, dan easing **hanya** didefinisikan di `@theme` pada `src/style.css`. View tidak memakai hex mentah.
+- Tema: dark blue. Token utama: `q-bg`, `q-card`, `q-card2`, `q-border`, `q-primary` (aksen), `q-primary-strong` (background tombol berteks, kontras 5.3:1), `q-primary-l`, `q-gold`, `q-green`, `q-red`, `q-text` / `q-text-2` / `q-text-3`, `surface`, `surface-raised`, `border-subtle`, `focus-ring`.
+- Font: `font-sans` = Inter Variable, `font-display` = Space Grotesk Variable.
+- Animasi dimatikan otomatis untuk `prefers-reduced-motion: reduce` (aturan global di `style.css`).
+
+### Komponen UI (`src/components/ui/`)
+
+`BaseButton`, `BaseCard`, `BaseBadge`, `BaseSheet` (bottom sheet), `BaseSegmented`, `BaseSkeleton`, `BaseEmptyState`, `PageHeader`, `SectionHeader`, `ResultScreen` (halaman sukses/gagal), `StatusBadge`, `PasswordInput`, `RevealOnScroll`.
+
+> **Jebakan:** `BaseButton` selalu memakai `inline-flex`, jadi `class="hidden lg:flex"` di BaseButton tidak menyembunyikannya. Bungkus dengan `<div class="hidden lg:block">`.
+
+### Pola alur multi-langkah
+
+Booking, Credits, dan Private Event memakai **accordion stepper** (`components/booking/BookingStep.vue`): satu langkah terbuka, langkah selesai tampil sebagai ringkasan dengan tombol "Ubah". Di mobile, tombol bayar ada di **bar sticky** di atas `BottomNav`.
+
+---
+
+## Alur Pembayaran
+
+```
+User submit
+   ↓
+POST .../initiate → { invoice_url, hold_id | intent_id | event_booking_id, expires_at }
+   ↓
+redirectToInvoice(invoice_url)   ← host divalidasi terhadap VITE_PAYMENT_HOSTS
+   ↓
+[Xendit]                                 [/payment/mock, hanya jika VITE_ENABLE_MOCK_PAYMENT=true]
+   ↓                                          ↓
+webhook ke backend                       POST .../mock-confirm
+   ↓                                          ↓
+/payment/success?hold_id=…               /payment/success?booking_code=…
 ```
 
-`toasts` adalah `ref([])` di level modul — satu instance yang di-share ke seluruh aplikasi. `ToastContainer.vue` me-render daftar toast ini secara global di `App.vue`.
+**Halaman sukses booking** (`PaymentSuccessView` + `useHoldConfirmation`):
 
-### Styling — Tailwind CSS v4 Dark Theme
+- Kalau URL membawa `booking_code` yang valid (mock payment, atau bayar penuh dengan play credits), kode langsung ditampilkan.
+- Kalau hanya membawa `hold_id`, halaman melakukan polling `GET /customer/bookings/by-hold/:hold_id`:
+  - `hold_id` harus UUID, kalau tidak, tidak ada request;
+  - 1 request langsung, lalu tiap 2 detik, maksimal 11 request (~20 detik; backend membatasi 30 request/menit);
+  - `confirmed` → tampilkan kode; `pending` dan `expired` → lanjut polling (`expired` belum final, webhook yang telat masih bisa mengonfirmasi);
+  - 401 / 404 / 429 → berhenti; error jaringan / 5xx → coba lagi;
+  - batas habis tanpa kode → arahkan ke My Bookings.
+- Halaman ini **tidak** mengambil "booking terbaru" dari list, karena list diurutkan berdasarkan jadwal, bukan waktu bayar.
 
-Seluruh aplikasi menggunakan dark theme dengan design tokens yang didefinisikan via `@theme` di `src/style.css`:
+---
 
-| Token | Nilai | Keterangan |
+## Modul
+
+### Booking Ruangan (`/booking`)
+
+Accordion: Cabang → Ruangan → Tanggal → Jam → Pembayaran.
+
+- Slot jam harus berurutan.
+- Harga selalu dari server (`GET /public/booking/quote`), termasuk paket multi-jam, happy hour, dan flash sale. Potongan voucher di layar hanya estimasi; angka final dari initiate.
+- Countdown pembayaran dihitung dari `expires_at`.
+
+| Fungsi | Endpoint |
+|---|---|
+| Cabang | `GET /public/stores` |
+| Room templates | `GET /public/room-templates?store_id=` |
+| Detail ruangan (+ fasilitas) | `GET /public/room-templates/:id` |
+| Slot per jam | `GET /public/booking/slots` |
+| Harga | `GET /public/booking/quote` |
+| Voucher | `GET /customer/vouchers/available` |
+| Initiate | `POST /customer/bookings/initiate` |
+| Status pembayaran | `GET /customer/bookings/by-hold/:hold_id` |
+
+### Private Event (`/event-booking`)
+
+Sewa satu cabang penuh. Accordion: Cabang → Jadwal → Detail Event → Pembayaran.
+
+- Ketersediaan **dan** harga dari `GET /public/event-booking/quote?store_id&booking_date&start_time&end_time` → `{ duration_hours, price_per_day, total_price, available }`.
+- `total_price` adalah angka yang ditagih (dibulatkan ke Rp1.000 di server), jadi tidak dihitung ulang di frontend.
+- Bentrok jadwal, termasuk event yang melewati tengah malam, dicek di backend.
+- Jam mulai = jam selesai ditolak (bukan event 24 jam).
+- Error 400 menampilkan pesan dari server, tanpa tombol "Coba lagi".
+- Tombol bayar aktif hanya jika `available === true` dan `total_price` ada.
+
+| Fungsi | Endpoint |
+|---|---|
+| Quote (harga + ketersediaan) | `GET /public/event-booking/quote` |
+| Initiate | `POST /customer/event-bookings/initiate` |
+| Mock confirm | `POST /customer/event-bookings/:id/mock-confirm` |
+
+### Play Credits (`/credits`, `/my-credits`)
+
+| Fungsi | Endpoint |
+|---|---|
+| Paket per cabang | `GET /public/play-credits/packages?store_id=` |
+| Initiate pembelian | `POST /customer/play-credits/purchase/initiate` |
+| Mock confirm | `POST /customer/play-credits/purchase/:id/mock-confirm` |
+| Credits aktif + expiring | `GET /customer/credits/expiring` |
+
+`CustomerNavbar` polling `GET /customer/credits/expiring` tiap 5 menit untuk badge notifikasi.
+
+### F&B (`/fnb-order`, `/my-fnb-orders`)
+
+Pesan makanan & minuman untuk booking yang sedang berjalan (`status = ongoing`). Keranjang tampil di bottom sheet.
+
+| Fungsi | Endpoint |
+|---|---|
+| Menu | `GET /public/fnb/menu` |
+| Buat pesanan | `POST /customer/fnb/orders` |
+| Pesanan saya | `GET /customer/fnb/orders` |
+
+### My Bookings (`/my-bookings`)
+
+- Filter status dan pagination dilakukan di server: `GET /customer/bookings?page&per_page=20&status=`. Nilai `status`: `upcoming`, `ongoing`, `completed`, `cancelled` (bisa dipisah koma).
+- Tombol "Muat lagi" muncul selama `meta.page < meta.total_page`.
+- Respons dari filter lama dibuang kalau user sudah ganti filter.
+
+### Akun
+
+- **Profil** (`/profile`): ubah nama/WhatsApp dan ganti password.
+  - Ganti password: password lama salah → 400, lebih dari 10 request/menit → 429; keduanya menampilkan `message` dari server.
+  - Setelah berhasil, perangkat lain dikeluarkan.
+- **Lupa password**: selalu menampilkan pesan yang sama, supaya tidak membocorkan apakah email terdaftar.
+- **Promo** (`/promo`): voucher khusus member.
+- **Banner** (`/banner/:id`): banner nonaktif → 404.
+
+---
+
+## Routes
+
+| Path | View | Auth |
 |---|---|---|
-| `q-bg` | `#080810` | Background utama |
-| `q-card` | `#11111E` | Background card / section |
-| `q-card2` | `#181828` | Background input / nested card |
-| `q-border` | `#252540` | Warna border |
-| `q-primary` | `#7C3AED` | Ungu — aksi utama |
-| `q-primary-d` | `#5B21B6` | Ungu gelap — hover state |
-| `q-text-2` | `#9CA3AF` | Teks sekunder |
-| `q-text-3` | `#6B7280` | Teks tersier / placeholder |
-| `q-green` | `#10B981` | Sukses / tersedia |
-| `q-red` | `#EF4444` | Error / gagal |
-| `q-gold` | `#F59E0B` | Rating / best value |
+| `/` | `HomeView` | public |
+| `/banner/:id` | `BannerDetailView` | public |
+| `/room/:id` | `RoomDetailView` | public |
+| `/booking` | `BookingView` | required |
+| `/event-booking` | `EventBookingView` | required |
+| `/credits`, `/credits/success`, `/credits/failed` | `CreditsView`, `CreditsSuccessView`, `CreditsFailedView` | required |
+| `/my-bookings` | `MyBookingsView` | required |
+| `/my-credits` | `MyCreditsView` | required |
+| `/fnb-order`, `/my-fnb-orders` | `FnbOrderView`, `MyFnbOrdersView` | required |
+| `/promo` | `PromoView` | required |
+| `/profile` | `ProfileView` | required |
+| `/payment/success`, `/payment/failed` | `PaymentSuccessView`, `PaymentFailedView` | required |
+| `/payment/mock` | `PaymentMockView` | required + `VITE_ENABLE_MOCK_PAYMENT=true` |
+| `/login` | `LoginView` | public |
+| `/forgot-password` | `ForgotPasswordView` | public |
+| `/reset-password/:token` | `ResetPasswordView` | public |
 
-Semua style view menggunakan utility class Tailwind langsung di template. `<style scoped>` hanya dipakai untuk CSS yang tidak bisa diekspresikan dengan utility (animasi, `appearance: none` pada select, dll).
-
-### Alur Pembayaran
-
-Semua transaksi (booking, credits, event) mengikuti pola yang sama:
-
-```
-User submit form
-      ↓
-POST /initiate → API returns { invoice_url, hold_id / intent_id / event_booking_id }
-      ↓
-Simpan ID ke sessionStorage → window.location.href = invoice_url
-      ↓
-  [Xendit — production]          [/payment/mock — testing]
-      ↓                                    ↓
-Xendit callback ke backend        User klik "Konfirmasi"
-      ↓                                    ↓
-                    Redirect ke /payment/success atau /payment/failed
-```
-
-`PaymentMockView` membaca `type` dari query string (`booking` / `credits` / `event`) dan memanggil endpoint mock-confirm yang sesuai. Setelah berhasil, `sessionStorage` key dibersihkan.
+Bottom nav (mobile): Home · My Booking · My Credits · Promo · Profil.
 
 ---
 
@@ -172,209 +282,41 @@ Xendit callback ke backend        User klik "Konfirmasi"
 
 ```
 src/
-├── api/
-│   ├── index.js              # Axios instance: api (auth) + publicApi (public)
-│   ├── authApi.js            # Auth, profil, bookings, credits, vouchers
-│   ├── bookingApi.js         # Booking ruangan + event booking
-│   ├── playCreditsApi.js     # Paket & pembelian play credits
-│   ├── bannerApi.js          # Banner promo
-│   ├── roomApi.js            # Room recommendations + templates
-│   └── storeApi.js           # Data cabang
-│
-├── assets/
-│   ├── logo.svg              # Logo utama (favicon)
-│   └── logo.png              # Logo fallback
-│
+├── api/                  # Axios instance (index.js) + satu file per domain
+├── assets/               # Logo
 ├── components/
-│   ├── CustomerNavbar.vue    # Navbar sticky: nav links + bell notifikasi + profile dropdown
-│   ├── BottomNav.vue         # Tab bar mobile (Home, My Booking, Credits, Promo, Profile)
-│   ├── ToastContainer.vue    # Render daftar toast notifikasi
-│   └── LoginPromptModal.vue  # Modal "login dulu" untuk guest yang klik aksi auth-required
-│
-├── composables/
-│   └── useToast.js           # Toast singleton: success / error / info / warning
-│
-├── layouts/
-│   └── CustomerLayout.vue    # Layout utama: Navbar + RouterView + BottomNav
-│
-├── router/
-│   └── index.js              # Routes + beforeEach auth guard
-│
-├── stores/
-│   └── authStore.js          # Pinia: token, customer, isLoggedIn, isMember, fetchMe
-│
-├── views/
-│   ├── HomeView.vue              # Landing: hero banner, quick actions, rekomendasi ruangan
-│   ├── BookingView.vue           # Form booking 5-step (cabang → ruangan → tanggal → slot → bayar)
-│   ├── EventBookingView.vue      # Form private event booking (full venue)
-│   ├── CreditsView.vue           # Top up play credits (pilih cabang → paket → bayar)
-│   ├── CreditsSuccessView.vue    # Halaman sukses top up
-│   ├── CreditsFailedView.vue     # Halaman gagal top up
-│   ├── MyBookingsView.vue        # Riwayat booking dengan filter status
-│   ├── MyCreditsView.vue         # Daftar paket credits aktif + progress pemakaian
-│   ├── PromoView.vue             # Daftar voucher tersedia untuk akun
-│   ├── ProfileView.vue           # Edit profil & ganti password
-│   ├── PaymentMockView.vue       # Simulasi pembayaran (mode testing, pengganti Xendit)
-│   ├── PaymentSuccessView.vue    # Konfirmasi pembayaran berhasil
-│   ├── PaymentFailedView.vue     # Konfirmasi pembayaran gagal
-│   ├── auth/
-│   │   ├── LoginView.vue
-│   │   ├── ForgotPasswordView.vue
-│   │   └── ResetPasswordView.vue
-│   └── banner/
-│       └── BannerDetailView.vue
-│
-├── __tests__/                # Unit tests (Vitest)
-│   ├── api/
-│   ├── components/
-│   ├── composables/
-│   ├── stores/
-│   └── views/
-│
-├── test/
-│   └── setup.js              # Global test setup: clear localStorage, stub window.location
-│
-├── App.vue                   # Root component: ToastContainer + RouterView
-├── main.js                   # Entry point: Pinia + Router + mount
-└── style.css                 # Tailwind directives + @theme design tokens
+│   ├── auth/             # AuthShell (layout halaman login/lupa/reset password)
+│   ├── booking/          # Step accordion, slot grid, ringkasan harga, voucher sheet, payment picker
+│   ├── ui/               # Komponen dasar design system
+│   ├── CustomerNavbar.vue
+│   ├── BottomNav.vue
+│   ├── LoginPromptModal.vue
+│   └── ToastContainer.vue
+├── composables/          # Logika halaman & state bersama
+├── layouts/              # CustomerLayout
+├── router/               # index.js, guard.js, scroll.js
+├── stores/               # authStore (Pinia)
+├── utils/                # payment, security, dates, format, slots, voucher, radioKeys
+├── views/                # Halaman (+ auth/, banner/)
+├── __tests__/            # Unit & component test (struktur mengikuti src/)
+├── test/setup.js         # Setup global test: localStorage, stub window.location, clipboard
+├── App.vue
+├── main.js
+└── style.css             # Tailwind + @theme design token
 ```
 
 ---
 
-## Routes
-
-| Path | Komponen | Auth |
-|---|---|---|
-| `/` | `HomeView` | public |
-| `/banner/:id` | `BannerDetailView` | public |
-| `/booking` | `BookingView` | public* |
-| `/event-booking` | `EventBookingView` | ✅ required |
-| `/credits` | `CreditsView` | public* |
-| `/credits/success` | `CreditsSuccessView` | public |
-| `/credits/failed` | `CreditsFailedView` | public |
-| `/my-bookings` | `MyBookingsView` | ✅ required |
-| `/my-credits` | `MyCreditsView` | ✅ required |
-| `/promo` | `PromoView` | ✅ required |
-| `/profile` | `ProfileView` | ✅ required |
-| `/payment/success` | `PaymentSuccessView` | public |
-| `/payment/failed` | `PaymentFailedView` | public |
-| `/payment/mock` | `PaymentMockView` | public |
-| `/login` | `LoginView` | public |
-| `/forgot-password` | `ForgotPasswordView` | public |
-| `/reset-password/:token` | `ResetPasswordView` | public |
-
-> *public artinya halaman bisa dibuka, tapi aksi submit (booking/purchase) akan memunculkan `LoginPromptModal` jika belum login.
-
----
-
-## Bottom Navigation (Mobile)
-
-```
-🏠 Home  |  📅 My Booking  |  💳 Credits  |  🏷️ Promo  |  👤 Profile
-```
-
-Semua tab kecuali **Home** membutuhkan login. Jika guest mengetuk tab yang membutuhkan auth, akan di-redirect ke `/login?redirect=<path>`.
-
----
-
-## Modul Booking Ruangan
-
-Form 5-step dengan progressive reveal — setiap section muncul setelah section sebelumnya diisi.
-
-| Step | Konten |
-|---|---|
-| 1 – Pilih Cabang | Dropdown cabang + info card (foto, alamat, jam operasional, Google Maps) |
-| 2 – Pilih Ruangan | Grid room templates (foto, fasilitas, kapasitas, harga mulai) |
-| 3 – Tanggal & Durasi | Date picker + tombol durasi 1–10 jam |
-| 4 – Pilih Jam | Grid slot tersedia/penuh `grid-cols-4`, harga per slot |
-| 5 – Pembayaran | Ringkasan, toggle Play Credits, voucher picker (bottom sheet), metode bayar |
-
-**Voucher Picker** — tidak ditampilkan inline, melainkan via bottom sheet (`<Teleport to="body">`). Trigger: tombol "Punya voucher?" → sheet slide up → pilih → sheet tutup otomatis. Voucher terpilih ditampilkan sebagai chip compact dengan tombol `✕` untuk membatalkan.
-
-**Kalkulasi diskon voucher:**
-- `percentage` → `harga × persen / 100`, di-cap oleh `max_discount` jika ada
-- `flat` → `discount_value`, di-cap maksimal sama dengan harga slot
-
-| Fungsi | Endpoint |
-|---|---|
-| Daftar cabang | `GET /public/stores` |
-| Room templates per cabang | `GET /public/room-templates?store_id=` |
-| Cek ketersediaan slot | `GET /public/booking/availability` |
-| Voucher tersedia | `GET /customer/vouchers/available` |
-| Inisiasi booking | `POST /customer/bookings/initiate` |
-| Mock confirm | `POST /customer/bookings/:id/mock-confirm` |
-
----
-
-## Modul Private Event Booking
-
-Booking full venue (seluruh ruangan di 1 cabang) untuk acara.
-
-Form 4-section:
-1. Pilih cabang → info card dengan foto store + harga/jam
-2. Detail event: nama event + tanggal + jam mulai & selesai (grid 3 kolom)
-3. Ketersediaan & harga — deteksi konflik dengan `blocked_ranges` dari API, kalkulasi total
-4. Metode pembayaran + CTA
-
-**Deteksi konflik jadwal** — `blocked_ranges[]` di-check dengan overlap logic:
-```
-startMins < bE && endMins > bS
-```
-Mendukung event lintas tengah malam (`endMins += 24*60` jika `endMins <= startMins`).
-
-| Fungsi | Endpoint |
-|---|---|
-| Cek ketersediaan + harga event | `GET /public/event-booking/availability` |
-| Inisiasi event booking | `POST /customer/event-bookings/initiate` |
-| Mock confirm | `POST /customer/event-bookings/:id/mock-confirm` |
-
----
-
-## Modul Play Credits
-
-Beli paket jam bermain yang bisa digunakan saat booking.
-
-Form 3-step:
-1. Pilih cabang → load paket
-2. Pilih paket — kartu kompak (nama, total jam, masa berlaku, harga, harga/jam, badge "Best Value")
-3. Ringkasan + metode bayar + info penting
-
-| Fungsi | Endpoint |
-|---|---|
-| Paket per cabang | `GET /public/play-credits/packages?store_id=` |
-| Inisiasi pembelian | `POST /customer/play-credits/purchase/initiate` |
-| Mock confirm | `POST /customer/play-credits/purchase/:id/mock-confirm` |
-| Credits aktif + expiring | `GET /customer/credits/expiring` |
-
----
-
-## Modul Notifikasi Bell
-
-`CustomerNavbar` polling `GET /customer/credits/expiring` setiap **5 menit** (`setInterval` di `onMounted`, dibersihkan di `onUnmounted`). Jika ada credits yang akan expired, badge merah muncul di ikon 🔔 dengan jumlah paket. Dropdown menampilkan detail: nama paket, sisa jam, dan waktu expired.
-
----
-
-## Unit Tests
+## Testing
 
 ```bash
-npm run test:run   # sekali jalan
-npm run coverage   # dengan laporan coverage
+npm run test:run
+npm run coverage
 ```
 
-**124 tests · 11 file · 100% pass**
-
-| File | Deskripsi |
-|---|---|
-| `__tests__/api/index.test.js` | Axios instance: interceptor token, handler 401, publicApi tanpa auth |
-| `__tests__/api/authApi.test.js` | login, getMe, logout, updateProfile, changePassword, getCreditsExpiring |
-| `__tests__/api/bannerApi.test.js` | getBanners, getBannerById |
-| `__tests__/api/bookingApi.test.js` | availability, stores, room templates, initiate, getMyBookings, getById |
-| `__tests__/stores/authStore.test.js` | isLoggedIn, isMember, setAuth, logout, fetchMe, localStorage sync |
-| `__tests__/composables/useToast.test.js` | success/error/info/warning, auto-remove, custom duration, singleton |
-| `__tests__/components/ToastContainer.test.js` | Render toast berdasarkan type, animasi masuk/keluar |
-| `__tests__/components/BottomNav.test.js` | Render tab, auth-guard redirect, active state |
-| `__tests__/components/LoginPromptModal.test.js` | v-model show/hide, link redirect dengan query param |
-| `__tests__/views/auth/LoginView.test.js` | Form submit, validasi, error handling, redirect setelah login |
-| `__tests__/views/HomeView.test.js` | Render banner, quick actions, auth guard pada handleQuickAction |
-
-Stack: **Vitest** + **jsdom** + `vi.mock('@/api/index')` pattern. Pinia stores ditest dengan `setActivePinia(createPinia())` di `beforeEach`. `useToast` menggunakan `vi.resetModules()` per test karena module-level singleton.
+- Stack: Vitest + jsdom + @vue/test-utils. Zona waktu di-pin ke `TZ=Asia/Jakarta`.
+- API di-mock per file dengan `vi.mock('@/api/...')`. Pinia memakai `setActivePinia(createPinia())` di `beforeEach`.
+- Polling dan countdown dites dengan fake timers (`vi.useFakeTimers()`).
+- Ada test yang memindai `src/` untuk memastikan tidak ada `window.location.href =` selain lewat `redirectToInvoice` / interceptor.
+- Perbaikan penting ditulis dengan TDD (test gagal dulu) dan dicek dengan mutation check.
+- Sebelum push, pastikan semua file ikut ter-commit (`git status` kosong) lalu jalankan `npm run test:run`. Commit yang hanya membawa test tanpa view-nya membuat CI merah.
