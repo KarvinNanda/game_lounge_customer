@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/authStore'
+import { authGuard } from '@/router/guard'
 import { mockPaymentGuard } from '@/utils/payment'
 import { scrollBehavior } from '@/router/scroll'
 
@@ -50,14 +50,6 @@ const router = createRouter({
   scrollBehavior,
 })
 
-// Navigation guard — tampilkan LoginPromptModal, BUKAN hard-redirect ke /login
-router.beforeEach((to, _from, next) => {
-  if (to.meta.requiresAuth && !useAuthStore().isLoggedIn) {
-    useAuthStore().openAuthModal(to.fullPath) // simpan intended path, buka modal
-    next(false)                               // batalkan navigasi, halaman saat ini tetap
-  } else {
-    next()
-  }
-})
+router.beforeEach(authGuard)
 
 export default router

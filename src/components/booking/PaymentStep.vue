@@ -72,25 +72,7 @@
     <!-- Metode bayar (disembunyikan jika pakai credits) -->
     <div v-if="!selectedCreditId">
       <p class="mb-2 text-xs font-medium text-q-text-2">Metode pembayaran</p>
-      <div role="radiogroup" aria-label="Metode pembayaran" class="grid gap-2 sm:grid-cols-2">
-        <button
-          v-for="m in PAYMENT_METHODS"
-          :key="m.value"
-          type="button"
-          role="radio"
-          :aria-checked="paymentMethod === m.value"
-          :class="optionClass(paymentMethod === m.value)"
-          @click="emit('update:paymentMethod', m.value)"
-        >
-          <span class="size-9 shrink-0 rounded-lg bg-white/5 text-q-primary-l flex items-center justify-center">
-            <component :is="m.icon" class="size-5" aria-hidden="true" />
-          </span>
-          <span class="min-w-0">
-            <span class="block text-sm font-semibold text-q-text">{{ m.label }}</span>
-            <span class="block text-xs text-q-text-3">{{ m.desc }}</span>
-          </span>
-        </button>
-      </div>
+      <PaymentMethodPicker :model-value="paymentMethod" @update:model-value="emit('update:paymentMethod', $event)" />
     </div>
 
     <p class="flex items-center gap-1.5 text-xs text-q-text-3">
@@ -101,7 +83,8 @@
 
 <script setup>
 import { RouterLink } from 'vue-router'
-import { Gamepad2, TriangleAlert, TicketPercent, ChevronRight, X, QrCode, Wallet, Landmark, CreditCard, ShieldCheck } from 'lucide-vue-next'
+import { Gamepad2, TriangleAlert, TicketPercent, ChevronRight, X, ShieldCheck } from 'lucide-vue-next'
+import PaymentMethodPicker from '@/components/booking/PaymentMethodPicker.vue'
 import { formatRp, formatDateShort } from '@/utils/format'
 
 defineProps({
@@ -116,13 +99,6 @@ defineProps({
   paymentMethod:     { type: String, default: '' },
 })
 const emit = defineEmits(['select-credit', 'open-vouchers', 'clear-voucher', 'update:paymentMethod'])
-
-const PAYMENT_METHODS = [
-  { value: 'qris',    label: 'QRIS',                 desc: 'Semua e-wallet & m-banking',      icon: QrCode },
-  { value: 'ewallet', label: 'E-Wallet',             desc: 'OVO, GoPay, DANA, ShopeePay',     icon: Wallet },
-  { value: 'va',      label: 'Virtual Account',      desc: 'BCA, Mandiri, BNI, BRI, Permata', icon: Landmark },
-  { value: 'card',    label: 'Kartu Debit / Kredit', desc: 'Visa, Mastercard, JCB',           icon: CreditCard },
-]
 
 const optionClass = (active) => [
   'flex w-full items-center gap-3 rounded-xl border p-3 text-left cursor-pointer transition-colors',

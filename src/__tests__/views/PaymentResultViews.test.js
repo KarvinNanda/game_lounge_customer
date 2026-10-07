@@ -10,7 +10,7 @@ import PaymentSuccessView from '@/views/PaymentSuccessView.vue'
 import PaymentFailedView from '@/views/PaymentFailedView.vue'
 
 const at = async (component, url) => {
-  const router = createRouter({ history: createMemoryHistory(), routes: ['/', '/booking', '/payment/success', '/payment/failed', '/my-bookings'].map((p) => ({ path: p, component: { template: '<div/>' } })) })
+  const router = createRouter({ history: createMemoryHistory(), routes: ['/', '/booking', '/credits', '/payment/success', '/payment/failed', '/my-bookings'].map((p) => ({ path: p, component: { template: '<div/>' } })) })
   await router.push(url); await router.isReady()
   const w = mount(component, { global: { plugins: [router] } })
   await flushPromises()
@@ -52,5 +52,14 @@ describe('PaymentFailedView', () => {
     expect(w.find('[role="alert"]').exists()).toBe(true)
     const hrefs = w.findAll('a').map((a) => a.attributes('href'))
     expect(hrefs).toEqual(expect.arrayContaining(['/booking', '/']))
+  })
+})
+
+import CreditsFailedView from '@/views/CreditsFailedView.vue'
+describe('CreditsFailedView', () => {
+  it('is an error result with retry (credits) and home links', async () => {
+    const w = await at(CreditsFailedView, '/payment/failed')
+    expect(w.find('[role="alert"]').exists()).toBe(true)
+    expect(w.findAll('a').map((a) => a.attributes('href'))).toEqual(expect.arrayContaining(['/credits', '/']))
   })
 })

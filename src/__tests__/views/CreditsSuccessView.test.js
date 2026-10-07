@@ -12,7 +12,7 @@ import CreditsSuccessView from '@/views/CreditsSuccessView.vue'
 const mountView = async (url = '/credits/success') => {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ['/', '/credits/success', '/my-credits'].map((p) => ({ path: p, component: { template: '<div/>' } })),
+    routes: ['/', '/credits', '/booking', '/credits/success', '/my-credits'].map((p) => ({ path: p, component: { template: '<div/>' } })),
   })
   await router.push(url)
   await router.isReady()
@@ -51,5 +51,21 @@ describe('CreditsSuccessView', () => {
     await mountView('/credits/success?package_name=Paket%205')
     expect(mockConfirmPlayCredits).not.toHaveBeenCalled()
     expect(sessionStorage.getItem('quantum_intent_id')).toBeNull()
+  })
+
+  it('is a success result with package details and a booking CTA', async () => {
+    vi.stubEnv('VITE_ENABLE_MOCK_PAYMENT', 'false')
+    const w = await mountView('/credits/success?package_name=Paket%205&total_hours=5&validity_days=30')
+    expect(w.find('[role="status"]').exists()).toBe(true)
+    expect(w.text()).toContain('5 jam')
+    expect(w.text()).toContain('30 hari')
+    expect(w.findAll('a').map((a) => a.attributes('href'))).toContain('/booking')
+  })
+
+  it('shows an error result when mock-confirm fails', async () => {
+    vi.stubEnv('VITE_ENABLE_MOCK_PAYMENT', 'true')
+    mockConfirmPlayCredits.mockRejectedValueOnce({ response: { data: { message: 'Intent kedaluwarsa' } } })
+    const w = await mountView('/credits/success?intent_id=intent-1')
+    expect(w.find('[role="alert"]').text()).toContain('Intent kedaluwarsa')
   })
 })

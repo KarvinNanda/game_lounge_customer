@@ -1,75 +1,45 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-sm text-center">
-
-      <!-- Loading: mock confirm in progress -->
-      <div v-if="confirming" class="py-10">
-        <div class="text-4xl mb-3 animate-spin inline-block">⏳</div>
-        <p class="text-q-text-2">Mengkonfirmasi pembayaran...</p>
-      </div>
-
-      <!-- Success state -->
-      <template v-else-if="!error">
-        <div class="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-5">
-          <span class="text-4xl">✅</span>
-        </div>
-        <h1 class="text-2xl font-bold text-white mb-2">Pembelian Berhasil!</h1>
-        <p class="text-q-text-2 text-sm mb-6">
-          Play Credits kamu sudah aktif.<br />
-          Konfirmasi dikirim ke email kamu.
-        </p>
-
-        <!-- Detail credits -->
-        <div class="bg-q-card border border-q-border rounded-2xl p-5 mb-6 text-left space-y-2 text-sm">
-          <div class="flex items-center gap-2 mb-3">
-            <div class="w-8 h-8 rounded-lg bg-q-primary/20 flex items-center justify-center text-base">🎮</div>
-            <span class="text-white font-bold">{{ packageName || 'Play Credits' }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-q-text-2">Total Jam</span>
-            <span class="text-white">{{ totalHours }} Jam</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-q-text-2">Masa Berlaku</span>
-            <span class="text-white">{{ validityDays }} Hari</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-q-text-2">Status</span>
-            <span class="text-green-400 font-semibold">Aktif ✓</span>
-          </div>
-        </div>
-
-        <RouterLink to="/booking">
-          <button class="w-full py-4 bg-gradient-purple text-white font-bold rounded-2xl shadow-purple mb-3">
-            📅 Booking Sekarang
-          </button>
-        </RouterLink>
-        <RouterLink to="/">
-          <button class="w-full py-3 text-q-text-2 text-sm hover:text-white transition-colors">
-            Kembali ke Beranda
-          </button>
-        </RouterLink>
-      </template>
-
-      <!-- Error state -->
-      <template v-else>
-        <div class="text-5xl mb-4">❌</div>
-        <h1 class="text-xl font-bold text-white mb-2">Terjadi Kesalahan</h1>
-        <p class="text-q-text-2 text-sm mb-5">{{ error }}</p>
-        <RouterLink to="/credits">
-          <button class="w-full py-4 bg-gradient-purple text-white font-bold rounded-2xl">
-            Coba Lagi
-          </button>
-        </RouterLink>
-      </template>
-
-    </div>
+  <div v-if="confirming" class="flex min-h-[60dvh] flex-col items-center justify-center gap-3 text-q-text-2" role="status">
+    <Loader2 class="size-8 animate-spin text-q-primary-l" aria-hidden="true" />
+    Mengkonfirmasi pembayaran…
   </div>
+
+  <ResultScreen
+    v-else-if="!error"
+    tone="success"
+    title="Pembelian Berhasil"
+    message="Play Credits kamu sudah aktif dan siap dipakai untuk booking."
+  >
+    <BaseCard class="p-4">
+      <p class="mb-3 flex items-center gap-2 font-semibold text-q-text">
+        <Gamepad2 class="size-5 text-q-primary-l" aria-hidden="true" /> {{ packageName || 'Play Credits' }}
+      </p>
+      <dl class="space-y-1.5 text-sm">
+        <div class="flex justify-between"><dt class="text-q-text-3">Total jam</dt><dd class="text-q-text">{{ totalHours }} jam</dd></div>
+        <div class="flex justify-between"><dt class="text-q-text-3">Masa berlaku</dt><dd class="text-q-text">{{ validityDays }} hari</dd></div>
+        <div class="flex justify-between"><dt class="text-q-text-3">Status</dt><dd class="font-semibold text-q-green">Aktif</dd></div>
+      </dl>
+    </BaseCard>
+    <template #actions>
+      <BaseButton to="/booking" size="lg" block>Booking sekarang</BaseButton>
+      <BaseButton to="/" variant="ghost" block>Kembali ke Beranda</BaseButton>
+    </template>
+  </ResultScreen>
+
+  <ResultScreen v-else tone="error" title="Terjadi Kesalahan" :message="error">
+    <template #actions>
+      <BaseButton to="/credits" size="lg" block>Coba lagi</BaseButton>
+    </template>
+  </ResultScreen>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
+import { useRoute } from 'vue-router'
+import { Loader2, Gamepad2 } from 'lucide-vue-next'
+import ResultScreen from '@/components/ui/ResultScreen.vue'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 import { mockConfirmPlayCredits } from '@/api/playCreditsApi'
 import { isMockPaymentEnabled, clearPaymentSession } from '@/utils/payment'
 
