@@ -19,7 +19,9 @@
         :summary="step.summary"
         :open="openStep === i"
         :done="currentStep > i"
+        :cancelable="editingStep === i"
         @edit="editingStep = i"
+        @cancel="editingStep = null"
       >
         <BranchStep v-if="i === 0" :stores="stores" :model-value="selectedStoreId" @select="chooseStore" />
 
@@ -28,13 +30,14 @@
             <BaseSkeleton v-for="n in 4" :key="n" class="h-24" />
           </div>
           <p v-else-if="!packages.length" class="py-6 text-center text-sm text-q-text-3">Belum ada paket di cabang ini.</p>
-          <div v-else role="radiogroup" aria-label="Paket credits" class="grid gap-2 sm:grid-cols-2">
+          <div v-else role="radiogroup" aria-label="Paket credits" class="grid gap-2 sm:grid-cols-2" @keydown="onRadioKeydownManual">
             <button
-              v-for="pkg in packages"
+              v-for="(pkg, n) in packages"
               :key="pkg.id"
               type="button"
               role="radio"
               :aria-checked="selectedPackage?.id === pkg.id"
+              :tabindex="radioTabindex(selectedPackage?.id === pkg.id, n, packages.some((p) => p.id === selectedPackage?.id))"
               class="relative rounded-xl border p-4 text-left cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-focus-ring"
               :class="selectedPackage?.id === pkg.id ? 'border-q-primary bg-q-primary/10' : 'border-border-subtle hover:border-q-primary/60'"
               @click="choosePackage(pkg)"
@@ -70,9 +73,12 @@
 
           <p v-if="purchaseError" role="alert" class="rounded-xl bg-q-red/10 p-3 text-center text-sm text-q-red">{{ purchaseError }}</p>
 
-          <BaseButton class="hidden lg:flex" size="lg" block :disabled="!canPay" :loading="purchasing" @click="handlePurchase">
-            {{ purchasing ? 'Memproses...' : 'Bayar Sekarang' }}
-          </BaseButton>
+          <!-- Wrapper: `hidden` di BaseButton kalah oleh inline-flex miliknya -->
+          <div class="hidden lg:block">
+            <BaseButton size="lg" block :disabled="!canPay" :loading="purchasing" @click="handlePurchase">
+              {{ purchasing ? 'Memproses...' : 'Bayar Sekarang' }}
+            </BaseButton>
+          </div>
         </div>
       </BookingStep>
     </div>
@@ -81,7 +87,7 @@
     <div
       v-if="selectedPackage"
       data-pay-bar
-      class="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 z-40 border-t border-border-subtle bg-q-bg/95 backdrop-blur-xl lg:hidden"
+      class="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 md:pb-[env(safe-area-inset-bottom)] z-40 border-t border-border-subtle bg-q-bg/95 backdrop-blur-xl lg:hidden"
     >
       <div class="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
         <div class="min-w-0 flex-1">
@@ -104,6 +110,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
 import { redirectToInvoice, rememberPaymentExpiry, INVALID_PAYMENT_LINK } from '@/utils/payment'
 import { formatRp } from '@/utils/format'
+import { onRadioKeydownManual, radioTabindex } from '@/utils/radioKeys'
 import { getPublicStores } from '@/api/bookingApi'
 import { getPlayCreditsPackages, initiatePlayCreditsPurchase } from '@/api/playCreditsApi'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -161,9 +168,12 @@ const summaryRows = computed(() => [
 ])
 
 // ── Aksi ──────────────────────────────────────────────────────────
+let packagesSeq = 0 // paket dari cabang yang sudah tidak dipilih, yang telat datang, diabaikan
+
 const chooseStore = async (id) => {
   editingStep.value = null
   if (id === selectedStoreId.value) return
+  const mySeq = ++packagesSeq
   selectedStoreId.value = id
   selectedPackage.value = null
   paymentMethod.value   = ''
@@ -172,11 +182,11 @@ const chooseStore = async (id) => {
   loadingPackages.value = true
   try {
     const { data } = await getPlayCreditsPackages(id)
-    packages.value = data.data || []
+    if (mySeq === packagesSeq) packages.value = data.data || []
   } catch {
-    toast.error('Gagal memuat paket credits')
+    if (mySeq === packagesSeq) toast.error('Gagal memuat paket credits')
   } finally {
-    loadingPackages.value = false
+    if (mySeq === packagesSeq) loadingPackages.value = false
   }
 }
 

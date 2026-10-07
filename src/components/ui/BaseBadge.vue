@@ -6,7 +6,7 @@
 
 <script setup>
 defineProps({
-  tone: { type: String, default: 'neutral', validator: (v) => ['neutral', 'gold', 'success', 'danger'].includes(v) },
+  tone: { type: String, default: 'neutral', validator: (v) => ['neutral', 'gold', 'success', 'danger', 'info', 'warning'].includes(v) },
 })
 
 const TONES = {
@@ -14,5 +14,7 @@ const TONES = {
   gold:    'bg-q-gold text-black',
   success: 'bg-q-green/15 text-q-green',
   danger:  'bg-q-red/15 text-q-red',
+  info:    'bg-q-primary/15 text-q-primary-l',
+  warning: 'bg-q-gold/15 text-q-gold',
 }
 </script>

@@ -46,6 +46,24 @@ describe('PaymentSuccessView', () => {
   })
 })
 
+describe('PaymentSuccessView untrusted query', () => {
+  beforeEach(() => { vi.clearAllMocks(); getMyBookings.mockResolvedValue({ data: { data: [{ booking_code: 'BK-REAL' }] } }) })
+
+  it('ignores a booking_code that is not a booking code and loads the real one', async () => {
+    const w = await at(PaymentSuccessView, '/payment/success?booking_code=' + encodeURIComponent('HUBUNGI WA 0812-xxx untuk refund'))
+    expect(w.text()).not.toContain('HUBUNGI')
+    expect(w.text()).toContain('BK-REAL')
+  })
+
+  it('caps event_name and ignores array params', async () => {
+    const long = 'A'.repeat(200)
+    const w = await at(PaymentSuccessView, `/payment/success?type=event&event_name=${long}`)
+    expect(w.text()).not.toContain(long)
+    const w2 = await at(PaymentSuccessView, '/payment/success?type=event&event_name=a&event_name=b')
+    expect(w2.text()).not.toContain('a,b')
+  })
+})
+
 describe('PaymentFailedView', () => {
   it('is an error result with retry and home links', async () => {
     const w = await at(PaymentFailedView, '/payment/failed')

@@ -88,4 +88,12 @@ describe('useBookingForm', () => {
     await b.onStoreChange()
     expect(b.form.voucherID).toBe('')
   })
+
+  it('choosing play credits removes a selected voucher (they cannot be combined)', async () => {
+    const b = await setup()
+    b.onSelectVoucher({ voucher_id: 'v1', code: 'X' })
+    b.selectCredit({ id: 'c1' })
+    expect(b.selectedVoucher.value).toBeNull()
+    expect(b.form.voucherID).toBe('')
+  })
 })

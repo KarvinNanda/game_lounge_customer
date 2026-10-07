@@ -1,4 +1,4 @@
-import { watch, onBeforeUnmount } from 'vue'
+import { watch, nextTick, onBeforeUnmount } from 'vue'
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
@@ -40,6 +40,12 @@ export const useFocusTrap = (containerRef, isOpen) => {
     if (open) {
       returnTo = document.activeElement
       document.addEventListener('keydown', onKeydown, true)
+      // Pindahkan fokus ke dalam dialog (screen reader langsung di konteks dialog),
+      // kecuali komponen sudah memfokuskan elemen tertentu di dalamnya.
+      nextTick(() => {
+        const el = containerRef.value
+        if (el && !el.contains(document.activeElement)) el.querySelector(FOCUSABLE)?.focus()
+      })
     } else {
       release()
     }

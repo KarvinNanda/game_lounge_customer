@@ -1,11 +1,12 @@
 <template>
-  <div role="radiogroup" aria-label="Metode pembayaran" class="grid gap-2 sm:grid-cols-2">
+  <div role="radiogroup" aria-label="Metode pembayaran" class="grid gap-2 sm:grid-cols-2" @keydown="onRadioKeydown">
     <button
-      v-for="m in PAYMENT_METHODS"
+      v-for="(m, i) in PAYMENT_METHODS"
       :key="m.value"
       type="button"
       role="radio"
       :aria-checked="modelValue === m.value"
+      :tabindex="radioTabindex(modelValue === m.value, i, !!modelValue)"
       class="flex w-full items-center gap-3 rounded-xl border p-3 text-left cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-focus-ring"
       :class="modelValue === m.value ? 'border-q-primary bg-q-primary/10' : 'border-border-subtle hover:border-q-primary/60'"
       @click="emit('update:modelValue', m.value)"
@@ -23,6 +24,7 @@
 
 <script setup>
 import { QrCode, Wallet, Landmark, CreditCard } from 'lucide-vue-next'
+import { onRadioKeydown, radioTabindex } from '@/utils/radioKeys'
 
 defineProps({ modelValue: { type: String, default: '' } })
 const emit = defineEmits(['update:modelValue'])

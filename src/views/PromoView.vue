@@ -1,99 +1,86 @@
-﻿<template>
-  <div class="max-w-2xl mx-auto px-4 py-6">
+<template>
+  <div class="mx-auto max-w-2xl px-4 sm:px-6 py-6">
+    <PageHeader title="Promo & Voucher" subtitle="Voucher yang bisa kamu pakai saat booking" />
 
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-5">
-      <div>
-        <h1 class="text-2xl font-bold text-white">Promo Saya</h1>
-        <p class="text-[#9CA3AF] text-sm mt-0.5">Voucher yang tersedia untuk kamu</p>
-      </div>
-      <div v-if="vouchers.length" class="bg-[#0282DE]/20 text-[#19B9EE] text-xs font-bold px-3 py-1.5 rounded-full">
-        {{ vouchers.length }} Voucher
-      </div>
+    <div v-if="loading" class="space-y-2" aria-busy="true">
+      <BaseSkeleton v-for="i in 3" :key="i" class="h-24" />
     </div>
 
-    <!-- Loading skeleton -->
-    <div v-if="loading" class="space-y-2">
-      <div v-for="i in 4" :key="i" class="h-14 bg-[#11111E] rounded-xl animate-pulse" />
-    </div>
+    <!-- Backend mengembalikan [] untuk non-member: jelaskan, jangan cuma "kosong" -->
+    <BaseEmptyState
+      v-else-if="!vouchers.length && !authStore.isMember"
+      :icon="Crown"
+      title="Voucher khusus member"
+      text="Voucher promo hanya tersedia untuk member Quantum. Tanyakan ke kasir cara menjadi member."
+    />
 
-    <!-- Empty state -->
-    <div v-else-if="!vouchers.length" class="text-center py-16">
-      <div class="text-5xl mb-4">🏷️</div>
-      <div class="text-white font-bold mb-2">Belum ada promo</div>
-      <p class="text-[#9CA3AF] text-sm">Promo dan voucher akan muncul di sini ketika tersedia untukmu.</p>
-    </div>
+    <BaseEmptyState v-else-if="!vouchers.length" :icon="TicketPercent" title="Belum ada voucher" text="Voucher baru akan muncul di sini." />
 
-    <!-- Voucher list — scrollable container -->
-    <div
-      v-else
-      class="bg-[#11111E] border border-[#252540] rounded-2xl overflow-hidden"
-    >
-      <!-- Column header -->
-      <div class="grid grid-cols-[1fr_auto_auto] gap-3 px-4 py-2.5 border-b border-[#252540] text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide">
-        <span>Voucher</span>
-        <span class="text-center">Diskon</span>
-        <span class="text-right">Berlaku</span>
-      </div>
-
-      <!-- Scrollable rows -->
-      <div class="overflow-y-auto max-h-[420px] divide-y divide-[#1E1E30]">
-        <div
-          v-for="v in vouchers"
-          :key="v.voucher_id"
-          class="grid grid-cols-[1fr_auto_auto] gap-3 items-center px-4 py-3 hover:bg-[#181828] transition-colors"
-        >
-          <!-- Left: name + code + min purchase -->
-          <div class="min-w-0">
-            <div class="text-white font-semibold text-sm truncate">{{ v.name }}</div>
-            <div class="flex items-center gap-2 mt-0.5">
-              <span class="text-[#0282DE] text-xs font-bold tracking-wider">{{ v.code }}</span>
-              <span v-if="v.min_purchase > 0" class="text-[#6B7280] text-[10px]">
-                · min {{ formatRp(v.min_purchase) }}
-              </span>
+    <ul v-else class="space-y-2">
+      <li v-for="v in vouchers" :key="v.voucher_id">
+        <BaseCard class="flex items-stretch overflow-hidden" :class="{ 'opacity-60': expiry(v).state === 'expired' }">
+          <div class="flex w-24 shrink-0 flex-col items-center justify-center gap-1 border-r border-dashed border-border-subtle bg-q-gold/10 p-3 text-center text-q-gold">
+            <TicketPercent class="size-6" aria-hidden="true" />
+            <span class="text-xs font-bold leading-tight">{{ discountLabel(v) }}</span>
+          </div>
+          <div class="min-w-0 flex-1 p-3">
+            <p class="truncate text-sm font-semibold text-q-text">{{ v.name }}</p>
+            <p class="text-xs text-q-text-3">
+              <template v-if="v.min_purchase > 0">min {{ formatRp(v.min_purchase) }} · </template>
+              <span :class="EXPIRY_TONE[expiry(v).state]">{{ expiry(v).state === 'ok' ? `s/d ${formatDateShort(v.valid_until)}` : expiry(v).label }}</span>
+            </p>
+            <div class="mt-2 flex items-center gap-2">
+              <code class="rounded-md bg-white/5 px-2 py-1 font-mono text-xs tracking-wider text-q-text">{{ v.code }}</code>
+              <button
+                type="button"
+                :aria-label="`Salin kode ${v.code}`"
+                class="size-11 -my-2 flex items-center justify-center rounded-full text-q-text-2 hover:text-q-text hover:bg-white/5 cursor-pointer focus-visible:outline-2 focus-visible:outline-focus-ring"
+                @click="copy(v.code)"
+              >
+                <Copy class="size-4" aria-hidden="true" />
+              </button>
             </div>
           </div>
+        </BaseCard>
+      </li>
+    </ul>
 
-          <!-- Center: discount badge -->
-          <div class="flex-shrink-0">
-            <span class="bg-[#0282DE]/20 text-[#19B9EE] text-xs font-black px-2.5 py-1 rounded-full whitespace-nowrap">
-              <template v-if="v.discount_type === 'percentage'">{{ v.discount_value }}% OFF</template>
-              <template v-else>Rp {{ formatRpNum(v.discount_value) }}</template>
-            </span>
-          </div>
-
-          <!-- Right: expiry -->
-          <div class="flex-shrink-0 text-right">
-            <span
-              class="text-xs font-medium"
-              :class="isExpiringSoon(v.valid_until)
-                ? 'text-orange-400'
-                : v.valid_until ? 'text-[#9CA3AF]' : 'text-[#6B7280]'"
-            >
-              {{ v.valid_until ? formatDate(v.valid_until) : '∞' }}
-            </span>
-            <div v-if="isExpiringSoon(v.valid_until)" class="text-orange-400 text-[10px]">
-              ⚠️ {{ daysLeft(v.valid_until) }}h lagi
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Footer hint -->
-      <div v-if="vouchers.length > 5" class="px-4 py-2 border-t border-[#252540] text-center text-[11px] text-[#6B7280]">
-        Scroll untuk lihat semua voucher
-      </div>
-    </div>
-
+    <BaseButton v-if="vouchers.length" to="/booking" class="mt-4" size="lg" block>Pakai saat booking</BaseButton>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getMyVouchers }  from '@/api/authApi'
+import { TicketPercent, Crown, Copy } from 'lucide-vue-next'
+import { getMyVouchers } from '@/api/authApi'
+import { useAuthStore } from '@/stores/authStore'
+import { useToast } from '@/composables/useToast'
+import { expiryState } from '@/utils/dates'
+import { formatRp, formatDateShort } from '@/utils/format'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
+import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 
-const vouchers = ref([])
-const loading  = ref(true)
+const EXPIRY_TONE = { none: '', ok: '', soon: 'font-semibold text-q-gold', expired: 'font-semibold text-q-red' }
+
+const authStore = useAuthStore()
+const toast     = useToast()
+const vouchers  = ref([])
+const loading   = ref(true)
+
+const expiry        = (v) => expiryState(v.valid_until)
+const discountLabel = (v) => (v.discount_type === 'percentage' ? `${v.discount_value}% off` : `Hemat ${formatRp(v.discount_value)}`)
+
+const copy = async (code) => {
+  try {
+    await navigator.clipboard.writeText(code)
+    toast.success(`Kode ${code} disalin`)
+  } catch {
+    toast.error('Gagal menyalin kode')
+  }
+}
 
 onMounted(async () => {
   try {
@@ -105,10 +92,4 @@ onMounted(async () => {
     loading.value = false
   }
 })
-
-const formatDate     = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
-const formatRp       = (p) => 'Rp ' + Math.round(p || 0).toLocaleString('id-ID')
-const formatRpNum    = (p) => Math.round(p || 0).toLocaleString('id-ID')
-const isExpiringSoon = (d) => d && Math.ceil((new Date(d) - new Date()) / (1000 * 60 * 60 * 24)) <= 7
-const daysLeft       = (d) => Math.ceil((new Date(d) - new Date()) / (1000 * 60 * 60 * 24))
 </script>

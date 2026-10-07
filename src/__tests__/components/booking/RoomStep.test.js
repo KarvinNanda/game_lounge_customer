@@ -27,4 +27,18 @@ describe('RoomStep', () => {
     // Vue merender object sebagai JSON — cek isi chip persis, bukan sekadar "mengandung"
     expect(w.findAll('[data-facility]').map((c) => c.text())).toEqual(['PlayStation 5'])
   })
+
+  it('stays reachable by Tab when the selected value is not in the list', () => {
+    const w = mount(RoomStep, { props: { rooms: ROOMS, modelValue: 999 } })
+    expect(w.find('[role="radio"]').attributes('tabindex')).toBe('0')
+  })
+
+  it('arrow keys only move focus (choosing a room advances the accordion)', async () => {
+    const rooms = [ROOMS[0], { ...ROOMS[0], id: 9, name: 'Regular' }]
+    const w = mount(RoomStep, { props: { rooms, modelValue: 0 }, attachTo: document.body })
+    w.findAll('[role="radio"]')[0].element.focus()
+    await w.findAll('[role="radio"]')[0].trigger('keydown', { key: 'ArrowDown' })
+    expect(w.emitted('select')).toBeUndefined()
+    w.unmount()
+  })
 })

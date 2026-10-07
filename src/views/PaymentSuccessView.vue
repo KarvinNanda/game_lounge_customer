@@ -43,9 +43,15 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 const route = useRoute()
 const toast = useToast()
 
+// Query bisa diisi siapa saja (link dibagikan) — jangan tampilkan teks bebas di halaman "Berhasil"
+const BOOKING_CODE_RE = /^[A-Z0-9-]{4,32}$/i
+const EVENT_NAME_MAX  = 60
+const queryString = (v) => (typeof v === 'string' ? v : '') // ?a=1&a=2 → array → abaikan
+
 const isEvent     = computed(() => route.query.type === 'event')
-const eventName   = computed(() => String(route.query.event_name || ''))
-const bookingCode = ref(String(route.query.booking_code || ''))
+const eventName   = computed(() => queryString(route.query.event_name).slice(0, EVENT_NAME_MAX))
+const queryCode   = queryString(route.query.booking_code)
+const bookingCode = ref(BOOKING_CODE_RE.test(queryCode) ? queryCode : '')
 
 const copyCode = async () => {
   try {

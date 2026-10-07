@@ -128,4 +128,44 @@ describe('BookingView accordion stepper', () => {
     await radio(w, 'VIP Room').trigger('click'); await flushPromises()
     expect(steps(w)[3].attributes('data-open')).toBe('true') // tanggal tetap terisi
   })
+
+  it('the summary pay button is hidden below lg via a wrapper (BaseButton inline-flex would beat `hidden`)', async () => {
+    const w = await mountView()
+    await toSlots(w)
+    await w.findAll('[data-slot]')[0].trigger('click')
+    const asideBtn = w.find('aside button[aria-busy], aside').findAll('button').find((b) => b.text().includes('Bayar'))
+    expect(asideBtn.classes()).not.toContain('hidden')
+    expect(asideBtn.element.parentElement.classList.contains('hidden')).toBe(true)
+    expect(asideBtn.element.parentElement.classList.contains('lg:block')).toBe(true)
+  })
+
+  it('"Batal" closes a step opened with "Ubah" without changing anything', async () => {
+    const w = await mountView()
+    await toSlots(w)
+    await w.findAll('[data-slot]')[0].trigger('click')
+    await steps(w)[2].find('button[aria-expanded="false"]').trigger('click')
+    expect(steps(w)[2].attributes('data-open')).toBe('true')
+    await steps(w)[2].findAll('button').find((b) => b.text() === 'Batal').trigger('click')
+    expect(steps(w)[2].attributes('data-open')).toBe('false')
+    expect(steps(w)[3].attributes('data-open')).toBe('true')
+    expect(w.findAll('[data-slot][aria-pressed="true"]')).toHaveLength(1) // jam tidak ter-reset
+  })
+
+  it('the mobile pay bar shows a retry when the price fails to load', async () => {
+    api.getBookingQuote.mockRejectedValueOnce(new Error('timeout')).mockResolvedValue(ok({ available: true, total_price: 50000, base_price: 50000, breakdown: [] }))
+    const w = await mountView()
+    await toSlots(w)
+    await w.findAll('[data-slot]')[0].trigger('click')
+    vi.advanceTimersByTime(250); await flushPromises()
+    const retry = w.find('[data-pay-bar]').findAll('button').find((b) => b.text().includes('Coba lagi'))
+    await retry.trigger('click'); await flushPromises()
+    expect(w.find('[data-pay-bar]').text()).toContain('Rp 50.000')
+  })
+
+  it('the pay bar respects the safe area at md (no BottomNav there)', async () => {
+    const w = await mountView()
+    await toSlots(w)
+    await w.findAll('[data-slot]')[0].trigger('click')
+    expect(w.find('[data-pay-bar]').classes()).toContain('md:pb-[env(safe-area-inset-bottom)]')
+  })
 })

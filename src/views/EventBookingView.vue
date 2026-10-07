@@ -1,466 +1,183 @@
-﻿<template>
-  <div class="max-w-2xl mx-auto px-4 py-6 pb-32">
+<template>
+  <div class="mx-auto max-w-2xl px-4 sm:px-6 py-6 pb-44 lg:pb-10">
+    <PageHeader title="Private Event" subtitle="Sewa satu cabang penuh untuk acaramu" />
 
-    <div class="mb-4">
-      <h1 class="text-2xl font-bold text-white">Private Event Booking</h1>
-      <p class="text-[#9CA3AF] text-sm mt-0.5">Booking seluruh gedung untuk acara spesialmu</p>
+    <p class="mb-5 flex gap-2 rounded-xl bg-q-primary/10 p-3 text-xs text-q-text-2">
+      <Building class="size-4 shrink-0 text-q-primary-l" aria-hidden="true" />
+      Semua ruangan di cabang diblokir selama event berlangsung.
+    </p>
+
+    <div class="space-y-3">
+      <BookingStep
+        v-for="(step, i) in steps"
+        :key="step.title"
+        data-step
+        :data-open="openStep === i"
+        :index="i + 1"
+        :title="step.title"
+        :summary="step.summary"
+        :open="openStep === i"
+        :done="currentStep > i"
+        :cancelable="editingStep === i"
+        @edit="editingStep = i"
+        @cancel="editingStep = null"
+      >
+        <BranchStep v-if="i === 0" :stores="stores" :model-value="form.storeId" @select="chooseStore" />
+
+        <!-- Jadwal -->
+        <div v-else-if="i === 1" class="space-y-4">
+          <DateStep v-model="form.date" :min="today" />
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="event-start" class="mb-1.5 block text-xs font-medium text-q-text-2">Jam mulai</label>
+              <input id="event-start" v-model="form.startTime" type="time" :class="INPUT" />
+            </div>
+            <div>
+              <label for="event-end" class="mb-1.5 block text-xs font-medium text-q-text-2">Jam selesai</label>
+              <input id="event-end" v-model="form.endTime" type="time" :class="INPUT" />
+            </div>
+          </div>
+          <p v-if="sameTime" role="alert" class="text-xs text-q-red">Jam selesai harus berbeda dengan jam mulai.</p>
+          <p v-else-if="durationHours > 0" class="text-xs text-q-text-3">
+            Durasi {{ durationHours }} jam<template v-if="form.endTime < form.startTime"> (melewati tengah malam; ketersediaan dicek untuk tanggal mulai)</template>
+          </p>
+
+          <p v-if="availability === 'conflict'" role="alert" class="flex gap-2 rounded-xl bg-q-red/10 p-3 text-sm text-q-red">
+            <CalendarX class="size-4 shrink-0" aria-hidden="true" /> Jam ini sudah dipakai booking atau event lain. Pilih jam lain.
+          </p>
+          <p v-else-if="availability === 'error'" role="alert" class="flex items-center justify-between gap-3 rounded-xl bg-q-red/10 p-3 text-sm text-q-red">
+            Gagal mengecek ketersediaan.
+            <button type="button" class="min-h-11 shrink-0 font-semibold text-q-text underline cursor-pointer" @click="checkAvailability">Coba lagi</button>
+          </p>
+
+          <BaseButton block :disabled="!scheduleReady || durationHours <= 0" :loading="availability === 'checking'" @click="checkAvailability">
+            Cek ketersediaan
+          </BaseButton>
+        </div>
+
+        <!-- Detail -->
+        <div v-else-if="i === 2" class="space-y-3">
+          <div>
+            <label for="event-name" class="mb-1.5 block text-xs font-medium text-q-text-2">Nama event</label>
+            <input id="event-name" v-model="form.eventName" type="text" maxlength="100" placeholder="Contoh: Ulang tahun, turnamen PS5" :class="INPUT" />
+          </div>
+          <div>
+            <label for="event-desc" class="mb-1.5 block text-xs font-medium text-q-text-2">Catatan untuk admin (opsional)</label>
+            <textarea id="event-desc" v-model="form.description" rows="2" maxlength="500" placeholder="Contoh: butuh dekorasi" :class="[INPUT, 'resize-none py-2.5']" />
+          </div>
+          <BaseButton block :disabled="!form.eventName.trim()" @click="detailsConfirmed = true; editingStep = null">Lanjut</BaseButton>
+        </div>
+
+        <!-- Pembayaran -->
+        <div v-else class="space-y-4">
+          <p class="flex items-center gap-2 text-sm font-semibold text-q-green">
+            <CircleCheck class="size-4" aria-hidden="true" /> Jadwal tersedia
+          </p>
+          <dl class="space-y-1.5 rounded-xl bg-surface-raised/50 p-3 text-sm">
+            <div v-for="row in summaryRows" :key="row.label" class="flex justify-between gap-4">
+              <dt class="text-q-text-3">{{ row.label }}</dt>
+              <dd class="text-right text-q-text">{{ row.value }}</dd>
+            </div>
+            <div class="flex justify-between gap-4 border-t border-border-subtle pt-2">
+              <dt class="text-q-text-2">Estimasi total</dt>
+              <dd class="font-display text-lg font-semibold text-q-primary-l tabular-nums">{{ estimatedPrice === null ? '—' : formatRp(estimatedPrice) }}</dd>
+            </div>
+          </dl>
+          <p class="text-xs text-q-text-3">Harga final dihitung saat checkout.</p>
+
+          <div>
+            <p class="mb-2 text-xs font-medium text-q-text-2">Metode pembayaran</p>
+            <PaymentMethodPicker v-model="form.paymentMethod" />
+          </div>
+
+          <p v-if="bookingError" role="alert" class="rounded-xl bg-q-red/10 p-3 text-center text-sm text-q-red">{{ bookingError }}</p>
+
+          <!-- Wrapper: `hidden` di BaseButton kalah oleh inline-flex miliknya -->
+          <div class="hidden lg:block">
+            <BaseButton size="lg" block :disabled="!canPay" :loading="initiating" @click="handleBookEvent">
+              {{ initiating ? 'Memproses...' : 'Bayar Sekarang' }}
+            </BaseButton>
+          </div>
+        </div>
+      </BookingStep>
     </div>
 
-    <!-- Info banner -->
-    <div class="bg-[#10B981]/10 border border-[#10B981]/30 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
-      <span class="text-xl flex-shrink-0">🏠</span>
-      <div class="flex-1 min-w-0">
-        <div class="text-white font-bold text-sm">Full Venue Booking</div>
-        <div class="text-[#9CA3AF] text-xs mt-0.5">Semua ruangan terblokir selama event berlangsung.</div>
+    <!-- Bar bayar sticky (mobile), di atas BottomNav -->
+    <div
+      v-if="currentStep === 3"
+      data-pay-bar
+      class="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 md:pb-[env(safe-area-inset-bottom)] z-40 border-t border-border-subtle bg-q-bg/95 backdrop-blur-xl lg:hidden"
+    >
+      <div class="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-q-text-3">Estimasi total</p>
+          <p class="font-display text-lg font-semibold text-q-text tabular-nums">{{ estimatedPrice === null ? '—' : formatRp(estimatedPrice) }}</p>
+        </div>
+        <BaseButton size="lg" :disabled="!canPay" :loading="initiating" @click="handleBookEvent">
+          {{ initiating ? 'Memproses...' : 'Bayar Sekarang' }}
+        </BaseButton>
       </div>
     </div>
-
-    <!-- ── SECTION 1: Pilih Cabang ─────────────────────────── -->
-    <section class="event-section">
-      <div class="section-header">
-        <div class="section-num">1</div>
-        <div>
-          <div class="section-title">Pilih Cabang</div>
-          <div class="section-desc">Pilih cabang yang ingin kamu booking untuk event</div>
-        </div>
-      </div>
-
-      <select v-model="form.storeId" @change="onStoreChange" class="event-select">
-        <option value="">-- Pilih Cabang --</option>
-        <option v-for="s in stores" :key="s.id" :value="s.id">{{ s.name }}</option>
-      </select>
-
-      <Transition name="fade">
-        <div v-if="selectedStore" class="mt-2 bg-[#181828] border border-[#252540] rounded-xl p-3">
-          <div class="flex items-center gap-2.5">
-            <img
-              v-if="selectedStore.photo_url"
-              :src="getImgUrl(selectedStore.photo_url)"
-              class="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-            />
-            <div v-else class="w-12 h-12 rounded-lg bg-[#11111E] flex items-center justify-center text-xl flex-shrink-0">🏢</div>
-            <div class="flex-1 min-w-0">
-              <div class="text-white font-bold text-sm">{{ selectedStore.name }}</div>
-              <div class="text-[#9CA3AF] text-xs mt-0.5 line-clamp-1">{{ selectedStore.address }}</div>
-              <div class="flex items-center gap-2 mt-0.5">
-                <span v-if="eventPrice" class="text-[#10B981] text-xs font-semibold">
-                  Rp {{ Math.round(eventPrice / 24).toLocaleString('id-ID') }} / jam
-                </span>
-                <a
-                  v-if="selectedStore.link_gmaps"
-                  :href="selectedStore.link_gmaps"
-                  target="_blank"
-                  class="text-[#0282DE] text-xs hover:underline"
-                >📍 Maps</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </section>
-
-    <!-- ── SECTION 2: Detail Event ─────────────────────────── -->
-    <Transition name="slide-down">
-      <section v-if="form.storeId" class="event-section">
-        <div class="section-header">
-          <div class="section-num">2</div>
-          <div>
-            <div class="section-title">Detail Event</div>
-            <div class="section-desc">Isi informasi event kamu</div>
-          </div>
-        </div>
-
-        <div class="space-y-3">
-          <!-- Nama event -->
-          <div>
-            <label class="block text-xs text-[#9CA3AF] mb-1.5">Nama Event *</label>
-            <input
-              v-model="form.eventName"
-              type="text"
-              placeholder="Contoh: Birthday Party, Tournament PS5"
-              class="event-select"
-            />
-          </div>
-
-          <!-- Tanggal + Jam mulai + Jam selesai (1 row) -->
-          <div class="grid grid-cols-3 gap-2">
-            <div>
-              <label class="block text-xs text-[#9CA3AF] mb-1.5">Tanggal *</label>
-              <input
-                v-model="form.date"
-                type="date"
-                :min="today"
-                @change="onDateChange"
-                class="event-select text-xs"
-              />
-            </div>
-            <div>
-              <label class="block text-xs text-[#9CA3AF] mb-1.5">Jam Mulai *</label>
-              <input
-                v-model="form.startTime"
-                type="time"
-                @change="recalculatePrice"
-                class="event-select"
-              />
-            </div>
-            <div>
-              <label class="block text-xs text-[#9CA3AF] mb-1.5">Jam Selesai *</label>
-              <input
-                v-model="form.endTime"
-                type="time"
-                @change="recalculatePrice"
-                class="event-select"
-              />
-            </div>
-          </div>
-
-          <!-- Deskripsi / catatan untuk admin -->
-          <div>
-            <label class="block text-xs text-[#9CA3AF] mb-1.5">
-              Deskripsi / Info Tambahan (Opsional)
-            </label>
-            <textarea
-              v-model="form.description"
-              rows="2"
-              placeholder="Contoh: Acara ulang tahun, butuh dekorasi, dll."
-              class="event-select resize-none"
-            />
-          </div>
-        </div>
-      </section>
-    </Transition>
-
-    <!-- ── SECTION 3: Ketersediaan & Harga ─────────────────── -->
-    <Transition name="slide-down">
-      <section v-if="form.date && form.startTime && form.endTime" class="event-section">
-        <div class="section-header">
-          <div class="section-num">3</div>
-          <div class="section-title">Ketersediaan & Harga</div>
-        </div>
-
-        <!-- Conflict warning -->
-        <div v-if="hasConflict" class="bg-red-500/10 border border-red-500/30 rounded-xl p-3">
-          <div class="text-red-400 text-sm font-semibold">⚠️ Jam ini sudah ada booking/event lain</div>
-          <div class="text-red-300 text-xs mt-0.5">Silakan pilih jam yang lain.</div>
-        </div>
-
-        <!-- Available + Price breakdown (weekday/weekend) -->
-        <div v-else-if="!hasConflict && pricePreview"
-          class="bg-[#10B981]/10 border border-[#10B981]/30 rounded-xl p-4">
-
-          <div class="text-[#10B981] text-sm font-semibold mb-3">✅ Tersedia!</div>
-
-          <!-- Badge weekday/weekend -->
-          <div
-            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold mb-3"
-            :class="pricePreview.day_type === 'Weekday'
-              ? 'bg-blue-500/20 text-blue-400'
-              : 'bg-orange-500/20 text-orange-400'"
-          >
-            {{ pricePreview.day_type === 'Weekday' ? '📅 Hari Kerja' : '🏖️ Weekend / Hari Libur' }}
-          </div>
-
-          <div class="space-y-1.5 text-sm">
-            <div class="flex justify-between">
-              <span class="text-[#9CA3AF]">Durasi</span>
-              <span class="text-white">{{ pricePreview.duration_hours }} Jam</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-[#9CA3AF]">Harga per Jam</span>
-              <span class="text-white">
-                Rp {{ Math.round(pricePreview.active_price / 24).toLocaleString('id-ID') }}
-              </span>
-            </div>
-            <div class="flex justify-between border-t border-[#252540] pt-2 mt-1">
-              <span class="text-[#9CA3AF] font-medium">Total Estimasi</span>
-              <span class="text-[#10B981] font-black text-lg">
-                Rp {{ Math.round(pricePreview.total_price).toLocaleString('id-ID') }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-    </Transition>
-
-    <!-- ── SECTION 4: Pembayaran ────────────────────────────── -->
-    <Transition name="slide-down">
-      <section v-if="calculatedPrice > 0 && !hasConflict" class="event-section">
-        <div class="section-header">
-          <div class="section-num">4</div>
-          <div>
-            <div class="section-title">Pembayaran</div>
-          </div>
-        </div>
-
-        <div class="space-y-1.5 mb-4">
-          <label
-            v-for="method in PAYMENT_METHODS"
-            :key="method.value"
-            class="payment-card"
-            :class="form.paymentMethod === method.value ? 'payment-card-active' : ''"
-          >
-            <input type="radio" v-model="form.paymentMethod" :value="method.value" class="hidden" />
-            <div
-              class="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0"
-              :style="{ background: method.bg }"
-            >{{ method.icon }}</div>
-            <div class="flex-1">
-              <div class="text-white font-semibold text-sm">{{ method.label }}</div>
-              <div class="text-[#6B7280] text-[11px]">{{ method.desc }}</div>
-            </div>
-            <div
-              class="w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
-              :class="form.paymentMethod === method.value ? 'border-[#10B981] bg-[#10B981]' : 'border-[#252540]'"
-            >
-              <div v-if="form.paymentMethod === method.value" class="w-1.5 h-1.5 rounded-full bg-white" />
-            </div>
-          </label>
-        </div>
-
-        <div class="flex items-center gap-1.5 text-[11px] text-[#6B7280] mb-3">
-          <span>🛡️</span><span>Transaksi aman & terenkripsi.</span>
-        </div>
-
-        <!-- Info paket / description dari admin -->
-        <div v-if="eventDescription"
-          class="bg-[#0B2350] border border-[#063271] rounded-xl p-3 mb-3">
-          <div class="text-[#6B7280] text-xs mb-1">ℹ️ Info Paket</div>
-          <p class="text-white text-sm leading-relaxed">{{ eventDescription }}</p>
-        </div>
-
-        <!-- Error -->
-        <div
-          v-if="bookingError"
-          class="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-3 text-red-400 text-sm text-center"
-        >
-          {{ bookingError }}
-        </div>
-
-        <button
-          @click="handleBookEvent"
-          :disabled="!form.paymentMethod || !form.eventName.trim() || initiating"
-          class="w-full py-3.5 text-white font-bold rounded-2xl transition-all
-                 disabled:opacity-40 disabled:cursor-not-allowed
-                 flex items-center justify-center gap-2 text-sm"
-          style="background: linear-gradient(135deg, #10B981, #059669)"
-        >
-          <span v-if="initiating">⏳ Memproses...</span>
-          <span v-else>Booking Event → {{ formatRp(calculatedPrice) }}</span>
-        </button>
-      </section>
-    </Transition>
-
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter }          from 'vue-router'
-import { useAuthStore }       from '@/stores/authStore'
-import { useToast }           from '@/composables/useToast'
-import api                                                                from '@/api/index'
-import { getPublicStores, checkEventAvailability, initiateEventBooking } from '@/api/bookingApi'
-import { getImgUrl } from '@/utils/security'
-import { redirectToInvoice, rememberPaymentExpiry, INVALID_PAYMENT_LINK } from '@/utils/payment'
+import { ref, computed, watch, onMounted } from 'vue'
+import { Building, CalendarX, CircleCheck } from 'lucide-vue-next'
+import { useEventBooking } from '@/composables/useEventBooking'
+import { formatRp, formatDateLong } from '@/utils/format'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BookingStep from '@/components/booking/BookingStep.vue'
+import BranchStep from '@/components/booking/BranchStep.vue'
+import DateStep from '@/components/booking/DateStep.vue'
+import PaymentMethodPicker from '@/components/booking/PaymentMethodPicker.vue'
 
-const router    = useRouter()
-const authStore = useAuthStore()
-const toast     = useToast()
+const INPUT = 'w-full min-h-11 rounded-xl border border-border-subtle bg-surface-raised/60 px-4 text-sm text-q-text [color-scheme:dark] placeholder:text-q-text-3 focus:outline-none focus:border-q-primary focus:ring-2 focus:ring-q-primary/30'
 
-const stores           = ref([])
-const eventPrice       = ref(0)   // price_per_day from API
-const hasConflict      = ref(false)
-const calculatedPrice  = ref(0)
-const pricePreview     = ref(null) // weekday/weekend price detail dari API
-const eventDescription = ref('')   // deskripsi paket dari admin (jika ada)
-const initiating       = ref(false)
-const bookingError     = ref('')
+const {
+  stores, form, today, selectedStore, scheduleReady, durationHours, sameTime,
+  availability, estimatedPrice, canPay, initiating, bookingError,
+  checkAvailability, handleBookEvent, init,
+} = useEventBooking()
 
-const today = new Date().toISOString().split('T')[0]
+// ── Accordion ─────────────────────────────────────────────────────
+const editingStep      = ref(null)
+const detailsConfirmed = ref(false)
 
-const form = reactive({
-  storeId:       '',
-  eventName:     '',
-  date:          '',
-  startTime:     '',
-  endTime:       '',
-  description:   '',
-  paymentMethod: '',
+const currentStep = computed(() => {
+  if (!form.storeId)                     return 0
+  if (availability.value !== 'available') return 1
+  if (!detailsConfirmed.value || !form.eventName.trim()) return 2
+  return 3
 })
+const openStep = computed(() => editingStep.value ?? currentStep.value)
 
-const PAYMENT_METHODS = [
-  { value: 'qris',    label: 'QRIS',                desc: 'Bayar dengan semua e-wallet',  icon: '⬛', bg: '#1a1a2e' },
-  { value: 'ewallet', label: 'E-Wallet',             desc: 'OVO, GoPay, DANA, ShopeePay', icon: '💳', bg: '#0d3b6e' },
-  { value: 'va',      label: 'Virtual Account',      desc: 'BCA, Mandiri, BNI, BRI',      icon: '🏦', bg: '#1a3a1a' },
-  { value: 'card',    label: 'Kartu Debit / Kredit', desc: 'Visa, Mastercard, JCB',        icon: '💳', bg: '#3a1a0d' },
-]
+// Hasil cek baru → tutup mode "Ubah" supaya langkah berikutnya terbuka
+watch(availability, (v) => { if (v === 'available') editingStep.value = null })
 
-const selectedStore = computed(() => stores.value.find(s => s.id === form.storeId))
+const scheduleLabel = computed(() =>
+  form.date && form.startTime && form.endTime ? `${formatDateLong(form.date)} · ${form.startTime}–${form.endTime}` : '')
 
-const durationHours = computed(() => {
-  if (!form.startTime || !form.endTime) return 0
-  const [sh, sm] = form.startTime.split(':').map(Number)
-  const [eh, em] = form.endTime.split(':').map(Number)
-  let mins = (eh * 60 + em) - (sh * 60 + sm)
-  if (mins <= 0) mins += 24 * 60
-  return Math.round(mins / 60 * 10) / 10
-})
+const steps = computed(() => [
+  { title: 'Pilih Cabang', summary: selectedStore.value?.name ?? '' },
+  { title: 'Jadwal',       summary: scheduleLabel.value },
+  { title: 'Detail Event', summary: form.eventName },
+  { title: 'Pembayaran',   summary: '' },
+])
 
-const onStoreChange = async () => {
-  form.date = ''; form.startTime = ''; form.endTime = ''
-  calculatedPrice.value = 0; hasConflict.value = false; eventPrice.value = 0
-  if (!form.storeId) return
-  try {
-    const { data } = await checkEventAvailability({ store_id: form.storeId, date: today })
-    eventPrice.value = data.data?.event_price?.price_per_day || 0
-  } catch {}
+const summaryRows = computed(() => [
+  { label: 'Cabang', value: selectedStore.value?.name ?? '—' },
+  { label: 'Jadwal', value: scheduleLabel.value },
+  { label: 'Durasi', value: `${durationHours.value} jam` },
+  { label: 'Event',  value: form.eventName },
+])
+
+const chooseStore = (id) => {
+  editingStep.value = null
+  if (id === form.storeId) return
+  Object.assign(form, { storeId: id, date: '', startTime: '', endTime: '' })
 }
 
-const onDateChange = () => {
-  form.startTime = ''; form.endTime = ''
-  calculatedPrice.value = 0; hasConflict.value = false
-}
-
-const recalculatePrice = async () => {
-  if (!form.storeId || !form.date || !form.startTime || !form.endTime) return
-  if (durationHours.value <= 0) return
-
-  pricePreview.value    = null
-  eventDescription.value = ''
-
-  try {
-    // 1. Conflict check
-    const { data }   = await checkEventAvailability({ store_id: form.storeId, date: form.date })
-    eventPrice.value  = data.data?.event_price?.price_per_day || 0
-    const blocked     = data.data?.blocked_ranges || []
-
-    const startMins = timeToMins(form.startTime)
-    let   endMins   = timeToMins(form.endTime)
-    if (endMins <= startMins) endMins += 24 * 60
-
-    hasConflict.value = blocked.some(b => {
-      const bS = timeToMins(b.start_time)
-      let   bE = timeToMins(b.end_time)
-      if (bE <= bS) bE += 24 * 60
-      return startMins < bE && endMins > bS
-    })
-
-    if (hasConflict.value) {
-      calculatedPrice.value = 0
-      return
-    }
-
-    // 2. Fetch weekday/weekend price preview
-    const priceRes = await api.get('/event-bookings/preview-price', {
-      params: {
-        store_id:     form.storeId,
-        start_time:   form.startTime,
-        end_time:     form.endTime,
-        booking_date: form.date,
-      },
-    })
-
-    const preview          = priceRes.data.data
-    pricePreview.value     = preview || null
-    calculatedPrice.value  = preview?.total_price || 0
-    eventDescription.value = preview?.description || ''
-  } catch {
-    // fallback: hitung manual dari eventPrice jika preview-price belum ada di backend
-    calculatedPrice.value = (!hasConflict.value && eventPrice.value > 0)
-      ? Math.round((eventPrice.value / 24 * durationHours.value) / 1000) * 1000
-      : 0
-  }
-}
-
-const handleBookEvent = async () => {
-  if (!authStore.isLoggedIn) { router.push('/login'); return }
-  if (!form.eventName.trim()) {
-    bookingError.value = 'Nama event wajib diisi'
-    return
-  }
-  initiating.value  = true
-  bookingError.value = ''
-  try {
-    const { data } = await initiateEventBooking({
-      store_id:       form.storeId,
-      event_name:     form.eventName,
-      booking_date:   form.date,
-      start_time:     form.startTime,
-      end_time:       form.endTime,
-      payment_method: form.paymentMethod,
-      description:    form.description || undefined,
-    })
-
-    const eventId = data.data?.event_booking_id
-    const result  = redirectToInvoice(data.data?.invoice_url, () => {
-      if (eventId) sessionStorage.setItem('quantum_event_id', eventId)
-      rememberPaymentExpiry(data.data?.expires_at)
-    })
-    if (result === 'invalid') {
-      bookingError.value = INVALID_PAYMENT_LINK
-      toast.error(bookingError.value)
-      initiating.value = false
-    }
-  } catch (e) {
-    bookingError.value = e?.response?.data?.message || 'Gagal membuat event booking'
-    toast.error(bookingError.value)
-    initiating.value = false
-  }
-}
-
-const timeToMins = (t) => {
-  if (!t || t.length < 5) return 0
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
-
-const formatRp = (p) => 'Rp ' + Math.round(p || 0).toLocaleString('id-ID')
-
-onMounted(async () => {
-  try {
-    const { data } = await getPublicStores()
-    stores.value = data.data || []
-  } catch {
-    toast.error('Gagal memuat daftar cabang')
-  }
-})
+onMounted(init)
 </script>
-
-<style scoped>
-.event-section {
-  background: #11111E; border: 0.5px solid #252540;
-  border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; position: relative;
-}
-
-.section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-
-.section-num {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: #10B981; color: white;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; flex-shrink: 0;
-}
-
-.section-title { font-size: 15px; font-weight: 700; color: white; }
-.section-desc  { font-size: 12px; color: #9CA3AF; margin-top: 2px; }
-
-.event-select {
-  width: 100%; background: #181828; border: 0.5px solid #252540;
-  border-radius: 12px; padding: 12px 14px; color: white;
-  font-size: 14px; outline: none; transition: border-color 0.15s; appearance: none;
-}
-.event-select:focus { border-color: #10B981; }
-
-.payment-card {
-  display: flex; align-items: center; gap: 10px;
-  background: #181828; border: 0.5px solid #252540;
-  border-radius: 12px; padding: 10px 12px; cursor: pointer; transition: all 0.15s;
-}
-.payment-card:hover    { border-color: #10B981; }
-.payment-card-active   { border-color: #10B981; background: rgba(16, 185, 129, 0.08); }
-
-.slide-down-enter-active { transition: all 0.3s ease; }
-.slide-down-enter-from   { opacity: 0; transform: translateY(-12px); }
-.fade-enter-active { transition: opacity 0.2s; }
-.fade-enter-from   { opacity: 0; }
-</style>

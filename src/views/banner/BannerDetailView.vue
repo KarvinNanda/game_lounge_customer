@@ -1,83 +1,60 @@
 <template>
-  <div class="min-h-screen">
-
-    <div class="max-w-2xl mx-auto px-4 py-4">
-      <button
-        @click="$router.back()"
-        class="flex items-center gap-2 text-q-text-2 hover:text-white transition-colors text-sm"
-      >
-        ← Kembali
-      </button>
+  <div class="mx-auto max-w-2xl px-4 sm:px-6 py-6 pb-24">
+    <div v-if="loading" class="space-y-4" aria-busy="true">
+      <BaseSkeleton class="h-56" />
+      <BaseSkeleton class="h-6 w-2/3 !rounded-md" />
+      <BaseSkeleton class="h-24" />
     </div>
 
-    <div v-if="loading" class="max-w-2xl mx-auto px-4 space-y-4">
-      <div class="w-full h-64 bg-q-card rounded-2xl animate-pulse" />
-      <div class="h-6 bg-q-card rounded animate-pulse w-3/4" />
-      <div class="h-4 bg-q-card rounded animate-pulse w-1/2" />
-    </div>
+    <template v-else-if="banner">
+      <PageHeader :title="banner.title" :subtitle="banner.subtitle || ''" back />
 
-    <div v-else-if="banner" class="max-w-2xl mx-auto px-4 pb-10">
-      <div class="rounded-2xl overflow-hidden mb-6">
+      <div class="mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-q-card2 via-q-card to-q-bg">
         <img
-          :src="getImgUrl(banner.detail_image_url || banner.image_url)"
+          v-if="imageUrl && !imageFailed"
+          :src="getImgUrl(imageUrl)"
           :alt="banner.title"
           class="w-full object-cover"
+          @error="imageFailed = true"
         />
+        <div v-else class="flex h-40 items-center justify-center text-q-primary-l">
+          <Megaphone class="size-10" aria-hidden="true" />
+        </div>
       </div>
 
-      <h1 class="text-2xl font-black text-white mb-2">{{ banner.title }}</h1>
+      <p v-if="banner.description" class="mb-6 whitespace-pre-line text-sm leading-relaxed text-q-text-2">{{ banner.description }}</p>
 
-      <p v-if="banner.subtitle" class="text-q-primary font-medium mb-4">
-        {{ banner.subtitle }}
-      </p>
+      <BaseButton v-if="authStore.isLoggedIn" to="/booking" size="lg" block>Booking sekarang</BaseButton>
+      <!-- Guest: pakai modal login global (CustomerLayout), bukan modal kedua di halaman ini -->
+      <BaseButton v-else size="lg" block @click="authStore.openAuthModal('/booking')">Booking sekarang</BaseButton>
+    </template>
 
-      <div
-        v-if="banner.description"
-        class="bg-q-card border border-q-border rounded-2xl p-5 text-q-text-2 text-sm leading-relaxed whitespace-pre-line"
-      >
-        {{ banner.description }}
-      </div>
-
-      <!-- <button
-        @click="handleCTA"
-        class="w-full mt-6 py-4 bg-gradient-purple text-white font-bold rounded-2xl hover:opacity-90 transition-opacity shadow-purple"
-      >
-        Booking Sekarang
-      </button> -->
-    </div>
-
-    <div v-else class="text-center py-20 text-q-text-3">
-      Banner tidak ditemukan.
-    </div>
-
-    <LoginPromptModal v-model="showLoginPrompt" />
-
+    <BaseEmptyState v-else :icon="SearchX" title="Promo tidak ditemukan" text="Promo ini mungkin sudah berakhir.">
+      <BaseButton to="/" variant="secondary">Kembali ke Beranda</BaseButton>
+    </BaseEmptyState>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import LoginPromptModal from '@/components/LoginPromptModal.vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { Megaphone, SearchX } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/authStore'
 import { getBannerById } from '@/api/bannerApi'
 import { getImgUrl } from '@/utils/security'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
+import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 
 const route     = useRoute()
-const router    = useRouter()
 const authStore = useAuthStore()
 
-const banner          = ref(null)
-const loading         = ref(true)
-const showLoginPrompt = ref(false)
+const banner      = ref(null)
+const loading     = ref(true)
+const imageFailed = ref(false)
 
-const handleCTA = () => {
-  if (!authStore.isLoggedIn) {
-    showLoginPrompt.value = true
-    return
-  }
-  router.push('/booking')
-}
+const imageUrl = computed(() => banner.value?.detail_image_url || banner.value?.image_url || '')
 
 onMounted(async () => {
   try {

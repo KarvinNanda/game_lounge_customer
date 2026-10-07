@@ -223,6 +223,7 @@ export const useBookingForm = () => {
     } else {
       selectedCreditId.value = cr.id
       form.paymentMethod     = 'play_credits'
+      onSelectVoucher(null) // voucher tidak bisa digabung dengan credits (UI-nya juga disembunyikan)
     }
   }
 

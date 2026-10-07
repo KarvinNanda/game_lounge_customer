@@ -10,7 +10,7 @@
       <ArrowLeft class="size-5" aria-hidden="true" />
     </button>
     <div class="flex-1 min-w-0 pt-1.5">
-      <h1 class="font-display text-2xl font-semibold tracking-tight text-q-text">{{ title }}</h1>
+      <h1 tabindex="-1" class="font-display text-2xl font-semibold tracking-tight text-q-text focus:outline-none">{{ title }}</h1>
       <p v-if="subtitle" class="text-q-text-2 text-sm mt-0.5">{{ subtitle }}</p>
     </div>
     <div v-if="$slots.actions" class="shrink-0 pt-1">

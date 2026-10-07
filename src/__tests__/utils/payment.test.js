@@ -47,7 +47,7 @@ describe('payment redirect guard', () => {
     expect(offenders).toEqual([])
   })
 
-  it.each(['src/composables/useBookingForm.js', 'src/views/EventBookingView.vue', 'src/views/CreditsView.vue'])(
+  it.each(['src/composables/useBookingForm.js', 'src/composables/useEventBooking.js', 'src/views/CreditsView.vue'])(
     '%s uses redirectToInvoice',
     (file) => { expect(readFileSync(file, 'utf8')).toContain('redirectToInvoice(') },
   )

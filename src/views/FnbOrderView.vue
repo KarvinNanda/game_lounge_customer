@@ -1,257 +1,210 @@
 <template>
-  <div class="max-w-2xl mx-auto px-4 py-6 pb-36">
+  <div class="mx-auto max-w-2xl px-4 sm:px-6 py-6 pb-44">
+    <ResultScreen
+      v-if="orderSent"
+      tone="success"
+      title="Pesanan Terkirim"
+      message="Staff sedang menyiapkan pesananmu dan akan mengantarnya ke ruangan. Pembayaran F&B di kasir."
+    >
+      <template #actions>
+        <BaseButton to="/my-fnb-orders" size="lg" block>Lihat status pesanan</BaseButton>
+        <BaseButton variant="ghost" block @click="orderSent = false">Pesan lagi</BaseButton>
+      </template>
+    </ResultScreen>
 
-    <!-- Header -->
-    <div class="flex items-center gap-3 mb-6">
-      <button @click="$router.back()"
-        class="w-9 h-9 flex items-center justify-center rounded-full
-               bg-q-card border border-q-border text-q-text-2 hover:text-white">
-        ←
-      </button>
-      <div>
-        <h1 class="text-xl font-bold text-white">Pesan Makanan & Minuman</h1>
-        <p class="text-q-text-3 text-xs mt-0.5">
-          Pesanan akan diantar ke ruanganmu. Bayar di kasir.
+    <template v-else>
+      <PageHeader title="Pesan F&B" subtitle="Diantar ke ruanganmu · bayar di kasir" back />
+      <!-- Satu region untuk mengumumkan perubahan jumlah: "Es Teh: 2" -->
+      <p class="sr-only" aria-live="polite">{{ qtyAnnouncement }}</p>
+
+      <BaseEmptyState
+        v-if="!bookingId"
+        :icon="UtensilsCrossed"
+        title="Pesan dari booking aktif"
+        text="Buka booking aktif di My Bookings, lalu pilih Pesan F&B supaya pesanan diantar ke ruanganmu."
+      >
+        <BaseButton to="/my-bookings">Ke My Bookings</BaseButton>
+      </BaseEmptyState>
+
+      <template v-else>
+        <p class="mb-4 flex items-center gap-2 rounded-xl bg-q-primary/10 p-3 text-sm text-q-text">
+          <Gamepad2 class="size-4 shrink-0 text-q-primary-l" aria-hidden="true" />
+          <span class="truncate">{{ roomInfo }}</span>
         </p>
-      </div>
-    </div>
 
-    <!-- Info booking aktif -->
-    <div class="bg-q-card2 border border-q-border rounded-2xl p-4 mb-5
-                flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-q-primary/20 flex items-center justify-center text-xl flex-shrink-0">
-        🎮
-      </div>
-      <div>
-        <div class="text-white font-semibold text-sm">{{ activeBookingInfo }}</div>
-        <div class="text-q-text-3 text-xs mt-0.5">
-          Pesanan diantar langsung ke ruanganmu
+        <div v-if="loadingMenu" class="space-y-2" aria-busy="true">
+          <BaseSkeleton v-for="i in 5" :key="i" class="h-20" />
         </div>
-      </div>
-    </div>
 
-    <!-- Loading menu -->
-    <div v-if="loadingMenu" class="space-y-4">
-      <div v-for="i in 2" :key="i">
-        <div class="h-5 bg-q-card rounded w-32 mb-3 animate-pulse" />
-        <div class="grid grid-cols-2 gap-3">
-          <div v-for="j in 4" :key="j" class="h-40 bg-q-card rounded-2xl animate-pulse" />
-        </div>
-      </div>
-    </div>
+        <p v-else-if="menuError" role="alert" class="flex items-center justify-between gap-3 rounded-xl bg-q-red/10 p-3 text-sm text-q-red">
+          Gagal memuat menu.
+          <button type="button" class="min-h-11 shrink-0 font-semibold text-q-text underline cursor-pointer" @click="loadMenu">Coba lagi</button>
+        </p>
 
-    <!-- Menu categories -->
-    <div v-else>
-      <div v-for="cat in menu" :key="cat.id" class="mb-6">
-        <h2 class="text-white font-bold text-base mb-3">{{ cat.name }}</h2>
+        <BaseEmptyState v-else-if="!menu.length" :icon="UtensilsCrossed" title="Menu belum tersedia" text="Tanyakan langsung ke staff kami." />
 
-        <div class="grid grid-cols-2 gap-3">
-          <div
-            v-for="item in cat.items"
-            :key="item.id"
-            class="bg-q-card border border-q-border rounded-2xl overflow-hidden
-                   hover:border-q-primary transition-all"
-          >
-            <!-- Gambar -->
-            <div class="h-28 bg-q-card2 flex items-center justify-center overflow-hidden">
-              <img
-                v-if="item.image_url"
-                :src="item.image_url"
-                :alt="item.name"
-                class="w-full h-full object-cover"
-              />
-              <span v-else class="text-4xl">🍽️</span>
-            </div>
-
-            <div class="p-3">
-              <div class="text-white font-semibold text-sm leading-tight mb-1">
-                {{ item.name }}
-              </div>
-              <div class="text-q-primary font-bold text-sm mb-2">
-                Rp {{ formatRp(item.price) }}
-              </div>
-
-              <!-- Quantity control -->
-              <div v-if="getQty(item.id) > 0" class="flex items-center justify-between">
-                <button
-                  @click="decreaseQty(item)"
-                  class="w-7 h-7 rounded-lg bg-q-card2 border border-q-border
-                         text-white font-bold hover:border-q-primary transition-all"
-                >
-                  −
-                </button>
-                <span class="text-white font-bold text-sm">{{ getQty(item.id) }}</span>
-                <button
-                  @click="increaseQty(item)"
-                  class="w-7 h-7 rounded-lg bg-q-primary text-white font-bold
-                         hover:bg-q-primary-d transition-all"
-                >
-                  +
-                </button>
-              </div>
-
-              <button
-                v-else
-                @click="increaseQty(item)"
-                class="w-full py-1.5 bg-q-primary/10 border border-q-primary/30
-                       text-q-primary text-sm font-semibold rounded-lg
-                       hover:bg-q-primary hover:text-white transition-all"
-              >
-                + Tambah
-              </button>
-            </div>
+        <template v-else>
+          <!-- Filter kategori: chip yang membungkus, bukan strip geser -->
+          <div aria-label="Kategori" role="group" class="mb-4 flex flex-wrap gap-2">
+            <button
+              v-for="cat in [{ id: null, name: 'Semua' }, ...menu]"
+              :key="cat.id ?? 'all'"
+              type="button"
+              :aria-pressed="activeCategory === cat.id"
+              class="min-h-11 rounded-full border px-4 text-sm font-medium cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-focus-ring"
+              :class="activeCategory === cat.id ? 'border-q-primary bg-q-primary/15 text-q-text' : 'border-border-subtle text-q-text-2 hover:border-q-primary/60'"
+              @click="activeCategory = cat.id"
+            >{{ cat.name }}</button>
           </div>
-        </div>
-      </div>
 
-      <!-- Empty menu -->
-      <div v-if="!menu.length" class="text-center py-16">
-        <div class="text-5xl mb-3">🍽️</div>
-        <div class="text-white font-bold mb-1">Menu belum tersedia</div>
-        <p class="text-q-text-3 text-sm">Tanyakan langsung ke staff kami.</p>
+          <section v-for="cat in visibleMenu" :key="cat.id" class="mb-5" :aria-labelledby="`cat-${cat.id}`">
+            <h2 :id="`cat-${cat.id}`" class="mb-2 font-display text-base font-semibold text-q-text">{{ cat.name }}</h2>
+            <ul class="divide-y divide-border-subtle rounded-2xl border border-border-subtle bg-surface/60">
+              <li v-for="item in cat.items" :key="item.id" class="flex items-center gap-3 p-3">
+                <img v-if="item.image_url" :src="getImgUrl(item.image_url)" alt="" loading="lazy" class="size-14 shrink-0 rounded-lg object-cover" />
+                <span v-else class="flex size-14 shrink-0 items-center justify-center rounded-lg bg-surface-raised text-q-text-3">
+                  <UtensilsCrossed class="size-5" aria-hidden="true" />
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold text-q-text">{{ item.name }}</p>
+                  <p v-if="item.description" class="truncate text-xs text-q-text-3">{{ item.description }}</p>
+                  <p class="text-sm font-semibold text-q-gold">{{ formatRp(item.price) }}</p>
+                </div>
+                <QtyStepper :name="item.name" :qty="cart.qty(item.id)" @add="changeQty(item, 1)" @remove="changeQty(item, -1)" />
+              </li>
+            </ul>
+          </section>
+        </template>
+      </template>
+    </template>
+
+    <!-- Bar keranjang, di atas BottomNav -->
+    <div
+      v-if="!orderSent && cart.count.value > 0"
+      data-cart-bar
+      class="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 md:pb-[env(safe-area-inset-bottom)] z-40 border-t border-border-subtle bg-q-bg/95 backdrop-blur-xl"
+    >
+      <div class="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+        <div class="min-w-0 flex-1">
+          <p class="text-xs text-q-text-3">{{ cart.count.value }} item</p>
+          <p class="font-display text-lg font-semibold text-q-text tabular-nums">{{ formatRp(cart.total.value) }}</p>
+        </div>
+        <BaseButton size="lg" @click="showCart = true">
+          <ShoppingBag class="size-4" aria-hidden="true" /> Lihat pesanan
+        </BaseButton>
       </div>
     </div>
 
-    <!-- Cart panel (muncul saat ada item dipilih) -->
-    <Transition name="slide-up">
-      <div
-        v-if="cartTotal > 0"
-        class="fixed bottom-0 left-0 right-0 z-50 bg-q-bg border-t border-q-border
-               px-4 py-4 max-w-2xl mx-auto"
-      >
-        <!-- Cart items summary -->
-        <div class="max-h-32 overflow-y-auto mb-3 space-y-1">
-          <div
-            v-for="item in cartItems"
-            :key="item.id"
-            class="flex justify-between text-sm"
-          >
-            <span class="text-q-text-2">{{ item.name }} ×{{ item.qty }}</span>
-            <span class="text-white">Rp {{ formatRp(item.price * item.qty) }}</span>
+    <BaseSheet v-model="showCart" title="Pesananmu" :description="`${cart.count.value} item · ${formatRp(cart.total.value)}`">
+      <ul class="divide-y divide-border-subtle">
+        <li v-for="line in cart.items.value" :key="line.id" class="flex items-center gap-3 px-5 py-3">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-q-text">{{ line.name }}</p>
+            <p class="text-xs text-q-text-3">{{ formatRp(line.price * line.qty) }}</p>
           </div>
-        </div>
-
-        <!-- Notes -->
-        <input
+          <QtyStepper :name="line.name" :qty="line.qty" @add="changeQty(line, 1)" @remove="changeQty(line, -1)" />
+        </li>
+      </ul>
+      <div class="px-5 py-3">
+        <label for="fnb-notes" class="mb-1.5 block text-xs font-medium text-q-text-2">Catatan (opsional)</label>
+        <textarea
+          id="fnb-notes"
           v-model="orderNotes"
-          type="text"
-          placeholder="Catatan pesanan (opsional)..."
-          class="w-full bg-q-card2 border border-q-border rounded-xl px-3 py-2
-                 text-white text-sm outline-none mb-3 placeholder:text-q-text-3
-                 focus:border-q-primary transition-colors"
+          rows="2"
+          maxlength="300"
+          placeholder="Contoh: es sedikit, tanpa sambal"
+          class="w-full resize-none rounded-xl border border-border-subtle bg-surface-raised/60 px-4 py-2.5 text-sm text-q-text placeholder:text-q-text-3 focus:outline-none focus:border-q-primary focus:ring-2 focus:ring-q-primary/30"
         />
-
-        <!-- Total + CTA -->
-        <div class="flex items-center justify-between gap-3">
-          <div class="flex-shrink-0">
-            <div class="text-q-text-3 text-xs">Total</div>
-            <div class="text-q-primary font-black text-lg">
-              Rp {{ formatRp(cartTotal) }}
-            </div>
-          </div>
-          <button
-            @click="handleSubmitOrder"
-            :disabled="submitting"
-            class="flex-1 py-3 bg-[#0282DE] text-white font-bold rounded-2xl
-                   hover:bg-[#0160A8] transition-colors
-                   disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <span v-if="submitting">⏳ Mengirim...</span>
-            <span v-else>🛒 Pesan Sekarang</span>
-          </button>
-        </div>
       </div>
-    </Transition>
-
-    <!-- Success state -->
-    <Transition name="fade">
-      <div
-        v-if="orderSuccess"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4"
-      >
-        <div class="bg-q-card border border-q-border rounded-3xl p-8 text-center max-w-sm w-full">
-          <div class="text-6xl mb-4">✅</div>
-          <h2 class="text-2xl font-bold text-white mb-2">Pesanan Dikirim!</h2>
-          <p class="text-q-text-2 text-sm mb-1">
-            Pesanan kamu sedang diproses. Staff akan segera menyiapkan dan mengantarkan ke ruanganmu.
-          </p>
-          <p class="text-q-text-3 text-xs mb-6">
-            💡 Ingat: pembayaran FnB dilakukan terpisah di kasir ya!
-          </p>
-          <button
-            @click="handleOrderDone"
-            class="w-full py-4 bg-[#0282DE] text-white font-bold rounded-2xl hover:bg-[#0160A8] transition-colors"
-          >
-            Lihat Status Pesanan →
-          </button>
-        </div>
-      </div>
-    </Transition>
-
+      <template #footer>
+        <BaseButton size="lg" block :loading="submitting" :disabled="!cart.count.value" @click="handleSubmitOrder">
+          {{ submitting ? 'Mengirim...' : `Kirim pesanan · ${formatRp(cart.total.value)}` }}
+        </BaseButton>
+      </template>
+    </BaseSheet>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter }      from 'vue-router'
+import { ref, computed, watch, nextTick, onMounted, defineComponent, h } from 'vue'
+import { useRoute } from 'vue-router'
+import { Gamepad2, UtensilsCrossed, ShoppingBag, Minus, Plus } from 'lucide-vue-next'
 import { getFnbMenu, createFnbOrder } from '@/api/fnbApi'
 import { useToast } from '@/composables/useToast'
+import { useCart } from '@/composables/useCart'
+import { getImgUrl } from '@/utils/security'
+import { formatRp } from '@/utils/format'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
+import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
+import BaseSheet from '@/components/ui/BaseSheet.vue'
+import ResultScreen from '@/components/ui/ResultScreen.vue'
 
-const route   = useRoute()
-const router  = useRouter()
-const toast   = useToast()
+// Tombol −/jumlah/+ (dipakai di daftar menu dan di sheet keranjang)
+const STEP_BTN = 'size-11 flex items-center justify-center rounded-full border cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-focus-ring'
+const QtyStepper = defineComponent({
+  props: { name: String, qty: Number },
+  emits: ['add', 'remove'],
+  setup(props, { emit }) {
+    return () => h('div', { class: 'flex shrink-0 items-center gap-1' }, [
+      props.qty > 0 && h('button', { type: 'button', 'aria-label': `Kurangi ${props.name}`, class: [STEP_BTN, 'border-border-subtle text-q-text-2 hover:border-q-primary'], onClick: () => emit('remove') }, [h(Minus, { class: 'size-4', 'aria-hidden': 'true' })]),
+      props.qty > 0 && h('span', { class: 'w-6 text-center text-sm font-semibold tabular-nums text-q-text' }, String(props.qty)),
+      h('button', { type: 'button', 'aria-label': `Tambah ${props.name}`, class: [STEP_BTN, 'border-q-primary bg-q-primary-strong text-white hover:bg-q-primary-d'], onClick: () => emit('add') }, [h(Plus, { class: 'size-4', 'aria-hidden': 'true' })]),
+    ])
+  },
+})
 
-const menu         = ref([])
-const cart         = ref({})      // { itemId: { id, name, price, qty } }
-const orderNotes   = ref('')
-const loadingMenu  = ref(true)
-const submitting   = ref(false)
-const orderSuccess = ref(false)
+const ROOM_INFO_MAX = 80
+const queryString   = (v) => (typeof v === 'string' ? v : '') // ?a=1&a=2 → array → abaikan
 
-const bookingId         = route.query.booking_id || ''
-const activeBookingInfo = route.query.room_info   || 'Sesi Bermain Aktif'
+const route = useRoute()
+const toast = useToast()
+const cart  = useCart()
 
-const cartItems = computed(() =>
-  Object.values(cart.value).filter(i => i.qty > 0)
-)
-const cartTotal = computed(() =>
-  cartItems.value.reduce((sum, i) => sum + i.price * i.qty, 0)
-)
+// booking_id dari URL: hanya angka atau UUID; selain itu dianggap tidak ada
+const BOOKING_ID_RE = /^(\d{1,12}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
+const rawBookingId  = queryString(route.query.booking_id)
+const bookingId     = BOOKING_ID_RE.test(rawBookingId) ? rawBookingId : ''
+// Teks dari URL (link dibagikan) — dibatasi supaya tidak bisa jadi pesan panjang yang menyesatkan
+const roomInfo  = queryString(route.query.room_info).slice(0, ROOM_INFO_MAX) || 'Sesi bermain aktif'
 
-const getQty      = (id) => cart.value[id]?.qty || 0
+const menu            = ref([])
+const loadingMenu     = ref(true)
+const menuError       = ref(false)
+const qtyAnnouncement = ref('')
+const activeCategory = ref(null)
+const showCart       = ref(false)
+const orderNotes     = ref('')
+const submitting     = ref(false)
+const orderSent      = ref(false)
 
-const increaseQty = (item) => {
-  if (!cart.value[item.id]) {
-    cart.value[item.id] = { id: item.id, name: item.name, price: item.price, qty: 0 }
-  }
-  cart.value[item.id].qty++
+const visibleMenu = computed(() =>
+  activeCategory.value === null ? menu.value : menu.value.filter((c) => c.id === activeCategory.value))
+
+const changeQty = (item, delta) => {
+  if (delta > 0) cart.add(item)
+  else cart.remove(item)
+  qtyAnnouncement.value = `${item.name}: ${cart.qty(item.id)}`
 }
 
-const decreaseQty = (item) => {
-  if (cart.value[item.id]) {
-    cart.value[item.id].qty--
-    if (cart.value[item.id].qty <= 0) delete cart.value[item.id]
-  }
-}
+// Keranjang kosong (mis. semua item dikurangi di sheet) → tutup sheet, fokus ke judul
+// (bar keranjang yang membuka sheet sudah hilang, jadi fokus tidak bisa kembali ke sana)
+watch(() => cart.count.value, async (n) => {
+  if (n !== 0 || !showCart.value) return
+  showCart.value = false
+  await nextTick()
+  document.querySelector('h1')?.focus()
+})
 
 const handleSubmitOrder = async () => {
-  if (!bookingId) {
-    toast.error('Booking tidak ditemukan')
-    return
-  }
   submitting.value = true
   try {
-    await createFnbOrder({
-      booking_id: bookingId,
-      notes:      orderNotes.value,
-      items:      cartItems.value.map(i => ({
-        item_id:  i.id,
-        quantity: i.qty,
-      })),
-    })
-    orderSuccess.value = true
-    cart.value         = {}
-    orderNotes.value   = ''
+    await createFnbOrder({ booking_id: bookingId, notes: orderNotes.value, items: cart.toPayload() })
+    cart.clear()
+    orderNotes.value = ''
+    showCart.value   = false
+    orderSent.value  = true
   } catch (e) {
     toast.error(e?.response?.data?.message || 'Gagal mengirim pesanan')
   } finally {
@@ -259,28 +212,21 @@ const handleSubmitOrder = async () => {
   }
 }
 
-const handleOrderDone = () => {
-  orderSuccess.value = false
-  router.push('/my-fnb-orders')
-}
-
-const formatRp = (p) => Math.round(p || 0).toLocaleString('id-ID')
-
-onMounted(async () => {
+const loadMenu = async () => {
+  loadingMenu.value = true
+  menuError.value   = false
   try {
     const { data } = await getFnbMenu()
-    menu.value = (data.data || []).filter(cat => cat.items?.length > 0)
+    menu.value = (data.data || []).filter((cat) => cat.items?.length > 0)
   } catch {
-    menu.value = []
+    menuError.value = true
   } finally {
     loadingMenu.value = false
   }
+}
+
+onMounted(() => {
+  if (!bookingId) { loadingMenu.value = false; return }
+  loadMenu()
 })
 </script>
-
-<style scoped>
-.slide-up-enter-active { transition: all 0.3s ease; }
-.slide-up-enter-from   { transform: translateY(100%); }
-.fade-enter-active     { transition: opacity 0.2s; }
-.fade-enter-from       { opacity: 0; }
-</style>

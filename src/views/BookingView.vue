@@ -15,7 +15,9 @@
           :summary="step.summary"
           :open="openStep === i"
           :done="isDone(i)"
+          :cancelable="editingStep === i"
           @edit="editingStep = i"
+          @cancel="editingStep = null"
         >
           <BranchStep v-if="i === 0" :stores="stores" :model-value="form.storeId" @select="chooseStore" />
 
@@ -77,9 +79,12 @@
           :voucher-code="selectedVoucher?.code || ''"
           @retry="refreshQuote"
         />
-        <BaseButton class="mt-4 hidden lg:flex" size="lg" block :disabled="!canPay" :loading="initiating" @click="handleBooking">
-          {{ initiating ? 'Memproses...' : 'Bayar Sekarang' }}
-        </BaseButton>
+        <!-- Wrapper: `hidden` di BaseButton kalah oleh inline-flex miliknya -->
+        <div class="mt-4 hidden lg:block">
+          <BaseButton size="lg" block :disabled="!canPay" :loading="initiating" @click="handleBooking">
+            {{ initiating ? 'Memproses...' : 'Bayar Sekarang' }}
+          </BaseButton>
+        </div>
       </aside>
     </div>
 
@@ -87,12 +92,16 @@
     <div
       v-if="selectedSlots.length"
       data-pay-bar
-      class="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 z-40 border-t border-border-subtle bg-q-bg/95 backdrop-blur-xl lg:hidden"
+      class="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 md:pb-[env(safe-area-inset-bottom)] z-40 border-t border-border-subtle bg-q-bg/95 backdrop-blur-xl lg:hidden"
     >
       <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
         <div class="min-w-0 flex-1">
           <p class="text-xs text-q-text-3">{{ discountAmount > 0 ? 'Estimasi total' : 'Total' }}</p>
-          <p class="font-display text-lg font-semibold text-q-text tabular-nums">
+          <p v-if="quoteError" class="text-xs text-q-red">
+            Harga gagal dimuat ·
+            <button type="button" class="min-h-11 font-semibold underline cursor-pointer" @click="refreshQuote">Coba lagi</button>
+          </p>
+          <p v-else class="font-display text-lg font-semibold text-q-text tabular-nums">
             {{ quoteLoading ? '…' : quote ? formatRp(Math.max(0, quote.total_price - discountAmount)) : '—' }}
           </p>
         </div>

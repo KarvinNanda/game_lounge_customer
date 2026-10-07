@@ -4,14 +4,13 @@
     <div v-if="loggedIn">
       <p class="mb-2 text-xs font-medium text-q-text-2">Play Credits</p>
       <p v-if="loadingCredits" class="text-xs text-q-text-3">Memuat credits…</p>
-      <div v-else-if="validCredits.length" role="radiogroup" aria-label="Play Credits" class="space-y-2">
+      <div v-else-if="validCredits.length" role="group" aria-label="Play Credits" class="space-y-2">
         <button
           v-for="cr in validCredits"
           :key="cr.id"
           type="button"
-          role="radio"
           data-credit
-          :aria-checked="cr.id === selectedCreditId"
+          :aria-pressed="cr.id === selectedCreditId"
           :class="optionClass(cr.id === selectedCreditId)"
           @click="emit('select-credit', cr)"
         >

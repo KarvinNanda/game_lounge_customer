@@ -81,4 +81,26 @@ describe('CreditsView', () => {
     expect(w.find('[role="alert"]').text()).toContain('Paket tidak aktif')
     expect(payBtn(w).attributes('disabled')).toBeUndefined()
   })
+
+  it('the desktop pay button is hidden below lg via a wrapper', async () => {
+    const w = await mountView()
+    await choose(w)
+    const btn = w.findAll('section[data-step] button').find((b) => b.text().includes('Bayar Sekarang'))
+    expect(btn.element.parentElement.classList.contains('hidden')).toBe(true)
+  })
+
+  it('ignores packages from a previously chosen branch that arrive late', async () => {
+    getPublicStores.mockResolvedValue(ok([{ id: 's1', name: 'Bekasi' }, { id: 's2', name: 'Depok' }]))
+    let resolveOld
+    getPlayCreditsPackages
+      .mockImplementationOnce(() => new Promise((r) => { resolveOld = r }))
+      .mockResolvedValueOnce(ok([{ id: 'd1', name: 'Paket Depok', total_hours: 5, validity_days: 30, price: 90000 }]))
+    const w = await mountView()
+    await radio(w, 'Bekasi').trigger('click')
+    await w.findAll('section[data-step]')[0].find('button[aria-expanded="false"]').trigger('click')
+    await radio(w, 'Depok').trigger('click'); await flushPromises()
+    resolveOld(ok(PKGS)); await flushPromises()
+    expect(w.text()).toContain('Paket Depok')
+    expect(w.text()).not.toContain('Paket 10 Jam')
+  })
 })

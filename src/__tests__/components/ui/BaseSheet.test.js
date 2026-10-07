@@ -47,4 +47,12 @@ describe('BaseSheet', () => {
     inside.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
     expect(document.activeElement.getAttribute('aria-label')).toBe('Tutup')
   })
+
+  it('moves focus into the sheet when it opens', async () => {
+    const trigger = document.createElement('button'); document.body.appendChild(trigger); trigger.focus()
+    await open()
+    await nextTick()
+    expect(dialog().contains(document.activeElement)).toBe(true)
+    trigger.remove()
+  })
 })

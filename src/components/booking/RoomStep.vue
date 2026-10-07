@@ -5,13 +5,14 @@
 
   <p v-else-if="!rooms.length" class="py-6 text-center text-sm text-q-text-3">Belum ada ruangan di cabang ini.</p>
 
-  <div v-else role="radiogroup" aria-label="Ruangan" class="space-y-2">
+  <div v-else role="radiogroup" aria-label="Ruangan" class="space-y-2" @keydown="onRadioKeydownManual">
     <button
-      v-for="room in rooms"
+      v-for="(room, i) in rooms"
       :key="room.id"
       type="button"
       role="radio"
       :aria-checked="room.id === modelValue"
+      :tabindex="radioTabindex(room.id === modelValue, i, rooms.some((r) => r.id === modelValue))"
       class="flex w-full items-center gap-3 rounded-xl border p-3 text-left cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-focus-ring"
       :class="room.id === modelValue ? 'border-q-primary bg-q-primary/10' : 'border-border-subtle hover:border-q-primary/60'"
       @click="emit('select', room)"
@@ -43,6 +44,7 @@ import { Gamepad2, Users } from 'lucide-vue-next'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
 import { getImgUrl } from '@/utils/security'
 import { formatRp, formatCapacity, facilityName } from '@/utils/format'
+import { onRadioKeydownManual, radioTabindex } from '@/utils/radioKeys'
 
 defineProps({
   rooms:      { type: Array, default: () => [] },

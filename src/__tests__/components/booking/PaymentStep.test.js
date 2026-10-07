@@ -19,6 +19,7 @@ describe('PaymentStep', () => {
   it('lists valid credits and emits select-credit; hides methods when a credit is chosen', async () => {
     const w = mk({ validCredits: [CREDIT] })
     expect(w.text()).toContain('Paket 10 Jam')
+    expect(w.find('[data-credit]').attributes('aria-pressed')).toBe('false') // toggle, bisa dibatalkan
     await w.find('[data-credit]').trigger('click')
     expect(w.emitted('select-credit')[0]).toEqual([CREDIT])
     expect(mk({ validCredits: [CREDIT], selectedCreditId: 'c1' }).find('[aria-label="Metode pembayaran"]').exists()).toBe(false)

@@ -1,0 +1,98 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { createRouter, createMemoryHistory } from 'vue-router'
+import { createPinia, setActivePinia } from 'pinia'
+import { useAuthStore } from '@/stores/authStore'
+
+const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }
+vi.mock('@/composables/useToast', () => ({ useToast: () => toast }))
+vi.mock('@/api/authApi', () => ({ getCustomerMe: vi.fn() }))
+vi.mock('@/api/bookingApi', () => ({ getPublicStores: vi.fn(), checkEventAvailability: vi.fn(), initiateEventBooking: vi.fn() }))
+import * as api from '@/api/bookingApi'
+import EventBookingView from '@/views/EventBookingView.vue'
+
+const ok = (data) => ({ data: { data } })
+
+const mountView = async () => {
+  const pinia = createPinia(); setActivePinia(pinia)
+  useAuthStore().setAuth({ name: 'A' })
+  const router = createRouter({ history: createMemoryHistory(), routes: ['/', '/event-booking'].map((p) => ({ path: p, component: { template: '<div/>' } })) })
+  await router.push('/event-booking'); await router.isReady()
+  const w = mount(EventBookingView, { global: { plugins: [router, pinia] }, attachTo: document.body })
+  await flushPromises()
+  return w
+}
+const steps = (w) => w.findAll('section[data-step]')
+const btn = (w, text) => w.findAll('button').find((b) => b.text().includes(text))
+const toSchedule = async (w) => {
+  await w.findAll('[role="radio"]').find((r) => r.text().includes('Bekasi')).trigger('click'); await flushPromises()
+  await btn(w, 'Besok').trigger('click')
+  await w.find('#event-start').setValue('14:00')
+  await w.find('#event-end').setValue('18:00')
+}
+
+describe('EventBookingView', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    api.getPublicStores.mockResolvedValue(ok([{ id: 's1', name: 'Bekasi' }]))
+    api.checkEventAvailability.mockResolvedValue(ok({ blocked_ranges: null, event_price: { price_per_day: 2400000 } }))
+  })
+
+  it('branch → schedule → details → payment, with the price labelled as an estimate', async () => {
+    const w = await mountView()
+    await toSchedule(w)
+    await btn(w, 'Cek ketersediaan').trigger('click'); await flushPromises()
+    expect(steps(w)[1].text()).toContain('14:00–18:00')
+    expect(steps(w)[2].attributes('data-open')).toBe('true')
+    await w.find('#event-name').setValue('Ultah Budi')
+    await btn(w, 'Lanjut').trigger('click')
+    expect(steps(w)[3].attributes('data-open')).toBe('true')
+    expect(w.text()).toContain('Estimasi')
+    expect(w.find('[data-pay-bar]').text()).toContain('Rp 400.000')
+  })
+
+  it('shows a conflict inside the schedule step and does not advance', async () => {
+    api.checkEventAvailability.mockResolvedValue(ok({ blocked_ranges: [{ start_time: '15:00', end_time: '16:00' }], event_price: { price_per_day: 2400000 } }))
+    const w = await mountView()
+    await toSchedule(w)
+    await btn(w, 'Cek ketersediaan').trigger('click'); await flushPromises()
+    expect(steps(w)[1].find('[role="alert"]').text()).toContain('sudah dipakai')
+    expect(steps(w)[1].attributes('data-open')).toBe('true')
+  })
+
+  it('offers a retry when the availability check fails', async () => {
+    api.checkEventAvailability.mockRejectedValueOnce(new Error('timeout'))
+    const w = await mountView()
+    await toSchedule(w)
+    await btn(w, 'Cek ketersediaan').trigger('click'); await flushPromises()
+    await btn(w, 'Coba lagi').trigger('click'); await flushPromises()
+    expect(steps(w)[2].attributes('data-open')).toBe('true')
+  })
+
+  it('has labelled inputs and one h1', async () => {
+    const w = await mountView()
+    await toSchedule(w)
+    for (const id of ['event-start', 'event-end']) expect(w.find(`label[for="${id}"]`).exists()).toBe(true)
+    expect(w.findAll('h1')).toHaveLength(1)
+  })
+
+  it('clearing the event name after confirming reopens the detail step (no dead end)', async () => {
+    const w = await mountView()
+    await toSchedule(w)
+    await btn(w, 'Cek ketersediaan').trigger('click'); await flushPromises()
+    await w.find('#event-name').setValue('Ultah Budi')
+    await btn(w, 'Lanjut').trigger('click')
+    await steps(w)[2].find('button[aria-expanded="false"]').trigger('click')
+    await w.find('#event-name').setValue('')
+    await btn(w, 'Batal').trigger('click')
+    expect(steps(w)[2].attributes('data-open')).toBe('true')
+  })
+
+  it('explains that start and end must differ', async () => {
+    const w = await mountView()
+    await toSchedule(w)
+    await w.find('#event-end').setValue('14:00')
+    expect(w.text()).toContain('Jam selesai harus berbeda')
+    expect(btn(w, 'Cek ketersediaan').attributes('disabled')).toBeDefined()
+  })
+})

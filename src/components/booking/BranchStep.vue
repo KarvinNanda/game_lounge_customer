@@ -1,7 +1,7 @@
 <template>
-  <div role="radiogroup" aria-label="Cabang" class="space-y-2">
+  <div role="radiogroup" aria-label="Cabang" class="space-y-2" @keydown="onRadioKeydownManual">
     <div
-      v-for="store in stores"
+      v-for="(store, i) in stores"
       :key="store.id"
       class="flex items-center gap-3 rounded-xl border p-3 transition-colors"
       :class="store.id === modelValue ? 'border-q-primary bg-q-primary/10' : 'border-border-subtle hover:border-q-primary/60'"
@@ -10,6 +10,7 @@
         type="button"
         role="radio"
         :aria-checked="store.id === modelValue"
+        :tabindex="radioTabindex(store.id === modelValue, i, stores.some((s) => s.id === modelValue))"
         class="flex flex-1 min-w-0 items-center gap-3 text-left cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-focus-ring"
         @click="emit('select', store.id)"
       >
@@ -42,6 +43,7 @@
 <script setup>
 import { Building2, Clock, MapPin } from 'lucide-vue-next'
 import { getImgUrl } from '@/utils/security'
+import { onRadioKeydownManual, radioTabindex } from '@/utils/radioKeys'
 
 defineProps({
   stores:     { type: Array, default: () => [] },
