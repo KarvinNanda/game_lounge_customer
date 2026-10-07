@@ -191,7 +191,8 @@ const handleChangePassword = async () => {
   savingPass.value = true
   try {
     await changeCustomerPassword(passForm)
-    toast.success('Password berhasil diubah!')
+    // Backend mengeluarkan semua sesi lain; sesi ini tetap login
+    toast.success('Password berhasil diubah. Perangkat lain sudah dikeluarkan.')
     Object.assign(passForm, { old_password: '', new_password: '', confirm_password: '' })
   } catch (e) {
     passError.value = e?.response?.data?.message || 'Gagal mengganti password'

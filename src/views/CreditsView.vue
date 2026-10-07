@@ -208,6 +208,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
+import { redirectToInvoice, rememberPaymentExpiry, INVALID_PAYMENT_LINK } from '@/utils/payment'
 import { getPublicStores } from '@/api/bookingApi'
 import { getPlayCreditsPackages, initiatePlayCreditsPurchase } from '@/api/playCreditsApi'
 
@@ -284,12 +285,15 @@ const handlePurchase = async () => {
       payment_method: paymentMethod.value,
     })
 
-    const invoiceURL = data.data?.invoice_url
-    const intentId   = data.data?.intent_id
-
-    if (invoiceURL) {
+    const intentId = data.data?.intent_id
+    const result   = redirectToInvoice(data.data?.invoice_url, () => {
       if (intentId) sessionStorage.setItem('quantum_intent_id', intentId)
-      window.location.href = invoiceURL
+      rememberPaymentExpiry(data.data?.expires_at)
+    })
+    if (result === 'invalid') {
+      purchaseError.value = INVALID_PAYMENT_LINK
+      toast.error(purchaseError.value)
+      purchasing.value = false
     }
   } catch (e) {
     purchaseError.value = e?.response?.data?.message || 'Gagal membuat transaksi'

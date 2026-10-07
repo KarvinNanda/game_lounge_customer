@@ -58,7 +58,7 @@ describe('LoginPromptModal', () => {
 
   it('close button emits update:modelValue with false', async () => {
     const wrapper  = await mountModal(true)
-    const closeBtn = wrapper.find('button')
+    const closeBtn = wrapper.find('button[aria-label="Tutup"]')
     await closeBtn.trigger('click')
     expect(wrapper.emitted('update:modelValue')).toBeTruthy()
     expect(wrapper.emitted('update:modelValue')[0]).toEqual([false])
@@ -85,8 +85,30 @@ describe('LoginPromptModal', () => {
 
   it('renders exactly 2 benefit cards', async () => {
     const wrapper     = await mountModal(true)
-    const benefitDivs = wrapper.findAll('[class*="bg-q-primary\\/10"]')
+    const benefitDivs = wrapper.findAll('[data-benefit]')
     expect(benefitDivs).toHaveLength(2)
+  })
+
+  it('is an accessible modal dialog', async () => {
+    const wrapper = await mountModal(true)
+    const dialog = wrapper.find('[role="dialog"]')
+    expect(dialog.attributes('aria-modal')).toBe('true')
+    expect(dialog.attributes('aria-labelledby')).toBe('login-prompt-title')
+  })
+
+  it('Escape closes the modal', async () => {
+    const wrapper = await mountModal(true)
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([false])
+  })
+
+  it('keeps keyboard focus inside the dialog (Tab wraps to the close button)', async () => {
+    const wrapper = await mountModal(true)
+    const login = wrapper.find('[role="dialog"] a').element
+    login.focus()
+    login.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
+    expect(document.activeElement.getAttribute('aria-label')).toBe('Tutup')
+    wrapper.unmount()
   })
 
   // ── Redirect query: fallback to route.fullPath ────────────────────────────────

@@ -1,76 +1,64 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-sm text-center">
+  <ResultScreen
+    tone="success"
+    title="Pembayaran Berhasil"
+    :message="isEvent ? 'Event kamu sudah terkonfirmasi.' : 'Tunjukkan kode booking ini ke admin saat tiba.'"
+  >
+    <BaseCard v-if="isEvent" class="p-5 text-center">
+      <p class="text-xs text-q-text-3">Event</p>
+      <p class="mt-1 font-display text-xl font-semibold text-q-text">{{ eventName || 'Private Event' }}</p>
+    </BaseCard>
 
-      <div class="text-7xl mb-5">✅</div>
-      <h1 class="text-2xl font-bold text-white mb-2">Pembayaran Berhasil!</h1>
-      <p class="text-q-text-2 text-sm mb-6 leading-relaxed">
-        Terima kasih, pembayaran kamu telah berhasil.<br />
-        Tunjukkan kode booking berikut kepada admin.
+    <BaseCard v-else class="p-5">
+      <p class="text-center text-xs text-q-text-3">Kode Booking</p>
+      <p class="mt-1 text-center font-display text-3xl font-bold tracking-wider text-q-primary-l tabular-nums">
+        {{ bookingCode || '—' }}
       </p>
+      <BaseButton v-if="bookingCode" class="mt-3" variant="ghost" size="sm" block @click="copyCode">
+        <Copy class="size-4" aria-hidden="true" /> Salin kode
+      </BaseButton>
+      <p class="mt-3 flex gap-2 rounded-xl bg-q-gold/10 p-3 text-xs text-q-gold">
+        <Camera class="size-4 shrink-0" aria-hidden="true" />
+        Simpan screenshot halaman ini untuk ditunjukkan ke admin.
+      </p>
+    </BaseCard>
 
-      <!-- Kode Booking -->
-      <div class="bg-q-card border border-q-primary rounded-2xl p-5 mb-4 text-left">
-        <div class="text-q-text-2 text-xs mb-1 text-center">Kode Booking</div>
-        <div class="text-3xl font-black text-q-primary tracking-wider text-center mb-3">
-          {{ bookingCode || '—' }}
-        </div>
-        <button
-          @click="copyCode"
-          class="block w-full text-q-primary text-sm text-center hover:underline mb-3 transition-colors"
-        >
-          📋 Salin Kode
-        </button>
-
-        <!-- Screenshot reminder -->
-        <div class="bg-amber-500/15 border border-amber-500/40 rounded-xl p-3 flex items-start gap-2">
-          <span class="text-lg flex-shrink-0">📸</span>
-          <div>
-            <div class="text-amber-400 text-xs font-bold mb-0.5">Jangan lupa di-screenshot!</div>
-            <div class="text-amber-300/80 text-xs leading-relaxed">
-              Screenshot halaman ini dan tunjukkan kode booking kepada admin saat tiba di tempat bermain.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-q-card border border-q-border rounded-xl p-4 mb-6 text-sm">
-        <div class="flex justify-between">
-          <span class="text-q-text-2">Status Pembayaran</span>
-          <span class="text-q-green font-semibold">Lunas ✓</span>
-        </div>
-      </div>
-
-      <RouterLink to="/">
-        <button class="w-full py-4 bg-q-primary hover:bg-q-primary-d text-white font-bold rounded-2xl shadow-purple transition-colors">
-          🏠 Kembali ke Beranda
-        </button>
-      </RouterLink>
-
-    </div>
-  </div>
+    <template #actions>
+      <BaseButton to="/my-bookings" size="lg" block>Lihat booking saya</BaseButton>
+      <BaseButton to="/" variant="ghost" block>Kembali ke Beranda</BaseButton>
+    </template>
+  </ResultScreen>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { Copy, Camera } from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
 import { getMyBookings } from '@/api/bookingApi'
+import ResultScreen from '@/components/ui/ResultScreen.vue'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
-const toast       = useToast()
-const bookingCode = ref('')
+const route = useRoute()
+const toast = useToast()
+
+const isEvent     = computed(() => route.query.type === 'event')
+const eventName   = computed(() => String(route.query.event_name || ''))
+const bookingCode = ref(String(route.query.booking_code || ''))
 
 const copyCode = async () => {
-  if (!bookingCode.value) return
   try {
     await navigator.clipboard.writeText(bookingCode.value)
-    toast.success('Kode booking disalin!')
+    toast.success('Kode booking disalin')
   } catch {
     toast.error('Gagal menyalin kode')
   }
 }
 
+// Kembali dari payment gateway tidak membawa kode → ambil booking terbaru
 onMounted(async () => {
+  if (isEvent.value || bookingCode.value) return
   try {
     const { data } = await getMyBookings({ page: 1, per_page: 1 })
     bookingCode.value = data.data?.[0]?.booking_code || ''

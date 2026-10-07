@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sanitizeRedirect, getImgUrl, safeJsonParse } from '@/utils/security'
+import { sanitizeRedirect, getImgUrl, safeJsonParse, safeExternalRedirect, getPaymentHosts } from '@/utils/security'
 
 describe('sanitizeRedirect', () => {
   // ── Path internal valid ─────────────────────────────────────────────────────
@@ -157,5 +157,56 @@ describe('safeJsonParse', () => {
   it('menghormati fallback custom', () => {
     expect(safeJsonParse('{bad', {})).toEqual({})
     expect(safeJsonParse(null, [])).toEqual([])
+  })
+})
+
+describe('safeExternalRedirect', () => {
+  const opts = { allowedHosts: ['checkout.xendit.co'], currentOrigin: 'http://localhost:5174' }
+
+  it.each([
+    ['https://checkout.xendit.co/web/abc', 'https://checkout.xendit.co/web/abc'],
+    ['/payment/mock?invoice_id=1', '/payment/mock?invoice_id=1'],
+    ['http://localhost:5174/payment/mock?x=1', 'http://localhost:5174/payment/mock?x=1'],
+  ])('allows %s', (raw, expected) => {
+    expect(safeExternalRedirect(raw, opts)).toBe(expected)
+  })
+
+  it.each([
+    'javascript:alert(1)',
+    'java\tscript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    '//evil.com/x',
+    '/\\evil.com',
+    'http://checkout.xendit.co/web/abc',
+    'https://evil.com/web/abc',
+    'https://checkout.xendit.co.evil.com/web',
+    'https://checkout.xendit.co@evil.com/web',
+    'https://user:pass@checkout.xendit.co/web',
+    'https://checkout.xendit.co:8443/web',
+    'not a url',
+    '',
+    null,
+    undefined,
+    42,
+  ])('rejects %s', (raw) => {
+    expect(safeExternalRedirect(raw, opts)).toBeNull()
+  })
+
+  // javascript:/data: punya origin "null" — sama dengan location.origin di file:// atau iframe sandbox
+  it.each(['javascript:alert(1)', 'data:text/html,<script>alert(1)</script>'])(
+    'rejects %s even when the page origin is "null"',
+    (raw) => {
+      expect(safeExternalRedirect(raw, { allowedHosts: [], currentOrigin: 'null' })).toBeNull()
+    },
+  )
+
+  it('matches host case-insensitively', () => {
+    expect(safeExternalRedirect('https://CHECKOUT.XENDIT.CO/a', opts)).toBe('https://checkout.xendit.co/a')
+  })
+})
+
+describe('getPaymentHosts', () => {
+  it('defaults to the Xendit checkout hosts when env is not set', () => {
+    expect(getPaymentHosts()).toEqual(['checkout.xendit.co', 'checkout-staging.xendit.co'])
   })
 })

@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { mockPaymentGuard } from '@/utils/payment'
+import { scrollBehavior } from '@/router/scroll'
 
 const routes = [
   {
@@ -13,7 +15,7 @@ const routes = [
       { path: 'room/:id',        name: 'RoomDetail',     component: () => import('@/views/RoomDetailView.vue') },
       { path: 'payment/success', name: 'PaymentSuccess', component: () => import('@/views/PaymentSuccessView.vue'),         meta: { requiresAuth: true } },
       { path: 'payment/failed',  name: 'PaymentFailed',  component: () => import('@/views/PaymentFailedView.vue'),         meta: { requiresAuth: true } },
-      { path: 'payment/mock',    name: 'PaymentMock',    component: () => import('@/views/PaymentMockView.vue'),         meta: { requiresAuth: true } },
+      { path: 'payment/mock',    name: 'PaymentMock',    component: () => import('@/views/PaymentMockView.vue'),         meta: { requiresAuth: true }, beforeEnter: mockPaymentGuard },
       { path: 'credits',         name: 'Credits',        component: () => import('@/views/CreditsView.vue'),         meta: { requiresAuth: true } },
       { path: 'credits/success', name: 'CreditsSuccess', component: () => import('@/views/CreditsSuccessView.vue'),         meta: { requiresAuth: true } },
       { path: 'credits/failed',  name: 'CreditsFailed',  component: () => import('@/views/CreditsFailedView.vue'),         meta: { requiresAuth: true } },
@@ -45,7 +47,7 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior,
 })
 
 // Navigation guard — tampilkan LoginPromptModal, BUKAN hard-redirect ke /login

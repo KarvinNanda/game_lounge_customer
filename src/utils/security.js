@@ -62,3 +62,44 @@ export const safeJsonParse = (str, fallback = null) => {
     return fallback
   }
 }
+
+const DEFAULT_PAYMENT_HOSTS = ['checkout.xendit.co', 'checkout-staging.xendit.co']
+
+/**
+ * Host payment gateway yang boleh jadi tujuan redirect.
+ * Diambil dari VITE_PAYMENT_HOSTS (dipisah koma), default host checkout Xendit.
+ */
+export const getPaymentHosts = () => {
+  const raw = import.meta.env.VITE_PAYMENT_HOSTS
+  if (typeof raw !== 'string' || raw.trim() === '') return DEFAULT_PAYMENT_HOSTS
+  return raw.split(',').map((h) => h.trim().toLowerCase()).filter(Boolean)
+}
+
+/**
+ * Validasi URL dari backend sebelum dipakai untuk window.location (mis. invoice_url).
+ * Lolos hanya jika: path internal, same-origin, atau https ke host di allowlist
+ * (tanpa userinfo, tanpa port custom). Selain itu → null.
+ *
+ * @param {unknown} raw
+ * @param {{ allowedHosts?: string[], currentOrigin?: string }} [opts]
+ * @returns {string|null}
+ */
+export const safeExternalRedirect = (
+  raw,
+  { allowedHosts = getPaymentHosts(), currentOrigin = window.location?.origin } = {},
+) => {
+  if (typeof raw !== 'string' || raw.length === 0) return null
+  if (raw.startsWith('/')) return sanitizeRedirect(raw, '') || null
+
+  let url
+  try { url = new URL(raw) } catch { return null }
+
+  // userinfo dipakai untuk menyamarkan host asli (https://trusted@evil.com)
+  if (url.username || url.password) return null
+  // Hanya skema web. javascript:/data: ber-origin "null" dan akan lolos cek
+  // same-origin di halaman ber-origin "null" (file://, iframe sandbox)
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+  if (currentOrigin && url.origin === currentOrigin) return url.href
+  if (url.protocol !== 'https:' || url.port !== '') return null
+  return allowedHosts.includes(url.hostname.toLowerCase()) ? url.href : null
+}

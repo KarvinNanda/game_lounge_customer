@@ -42,6 +42,7 @@ vi.mock('swiper/modules', () => ({
 }))
 
 import { getBanners } from '@/api/bannerApi'
+import api from '@/api/index'
 import HomeView from '@/views/HomeView.vue'
 
 // ── Router ───────────────────────────────────────────────────────────────────
@@ -85,6 +86,7 @@ describe('HomeView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getBanners.mockResolvedValue({ data: { data: [] } })
+    api.get.mockResolvedValue({ data: { data: [] } })
   })
 
   // ── Mounting & API calls ─────────────────────────────────────────────────────
@@ -152,6 +154,85 @@ describe('HomeView', () => {
     expect(text).toContain('Booking')
     expect(text).toContain('Top Up Play Credits')
     expect(text).toContain('Private Event Booking')
+  })
+
+  it('does not render a broken <img> for a banner without image_url', async () => {
+    getBanners.mockResolvedValue({ data: { data: [{ id: 1, title: 'Promo', image_url: '' }] } })
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    expect(wrapper.find('section[aria-label="Promo"] img').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Promo')
+  })
+
+  it('hides a banner image that fails to load', async () => {
+    getBanners.mockResolvedValue({ data: { data: [{ id: 1, title: 'Promo', image_url: 'http://img/1.jpg' }] } })
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    await wrapper.find('section[aria-label="Promo"] img').trigger('error')
+    expect(wrapper.find('section[aria-label="Promo"] img').exists()).toBe(false)
+  })
+
+  it('replaces the hero skeleton with a static fallback when banners fail to load', async () => {
+    getBanners.mockRejectedValue(new Error('Network error'))
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    expect(wrapper.find('section[aria-label="Promo"] .skeleton').exists()).toBe(false)
+    expect(wrapper.find('[data-hero-fallback]').exists()).toBe(true)
+  })
+
+  it('shows the static fallback when there are no banners', async () => {
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    expect(wrapper.find('[data-hero-fallback]').exists()).toBe(true)
+  })
+
+  it('has exactly one <h1> even with several banners', async () => {
+    getBanners.mockResolvedValue({ data: { data: [
+      { id: 1, title: 'A', image_url: '' }, { id: 2, title: 'B', image_url: '' },
+    ] } })
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    expect(wrapper.findAll('h1')).toHaveLength(1)
+  })
+
+  // ── Rooms grid (minimal scroll) ──────────────────────────────────────────────
+
+  const room = (id) => ({ id, name: `Room ${id}`, capacity_max: 4, min_price: 25000, image_url: null })
+
+  it('shows at most 4 recommended rooms in a grid (no horizontal strip)', async () => {
+    api.get.mockResolvedValue({ data: { data: [1, 2, 3, 4, 5, 6].map(room) } })
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    expect(wrapper.findAll('[data-room-card]')).toHaveLength(4)
+    expect(wrapper.find('.overflow-x-auto').exists()).toBe(false)
+  })
+
+  it('renders fewer than 4 rooms without placeholders', async () => {
+    api.get.mockResolvedValue({ data: { data: [room(1), room(2)] } })
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    expect(wrapper.findAll('[data-room-card]')).toHaveLength(2)
+    // hero juga pakai skeleton saat banner kosong — cek hanya di section rooms
+    expect(wrapper.find('[aria-label="Rekomendasi Ruangan"] .skeleton').exists()).toBe(false)
+  })
+
+  it('shows an empty message when there are no rooms', async () => {
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    expect(wrapper.text()).toContain('Belum ada ruangan')
+  })
+
+  it('uses svg icons, not emoji, for quick actions', async () => {
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    expect(wrapper.text()).not.toMatch(/📅|💳|🏠|🎮/u)
+  })
+
+  it('gives the capacity badge a screen-reader label', async () => {
+    api.get.mockResolvedValue({ data: { data: [room(1)] } })
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    expect(wrapper.find('[data-room-card] .sr-only').text()).toBe('Kapasitas hingga 4 orang')
   })
 
   // ── Login modal via authStore (modal now lives in CustomerLayout) ─────────────

@@ -1,161 +1,125 @@
 <template>
-  <nav class="sticky top-0 z-50 bg-[#080810]/80 backdrop-blur-xl border-b border-[#252540] animate-fade-in-down">
+  <nav class="sticky top-0 z-50 bg-q-bg/80 backdrop-blur-xl border-b border-border-subtle" aria-label="Navigasi utama">
     <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
 
-      <!-- Logo -->
-      <RouterLink to="/" class="flex flex-col leading-tight">
-        <span class="text-white font-black text-xl tracking-wide">Quantum</span>
-        <span class="text-[#6B7280] text-[9px] font-medium tracking-[0.25em] uppercase">Gaming Center</span>
+      <RouterLink to="/" class="flex flex-col leading-tight rounded-md focus-visible:outline-2 focus-visible:outline-focus-ring">
+        <span class="font-display text-q-text font-bold text-xl tracking-wide">Quantum</span>
+        <span class="text-q-text-3 text-[10px] font-medium tracking-[0.25em] uppercase">Gaming Center</span>
       </RouterLink>
 
-      <!-- Nav Links (desktop) -->
-      <div class="hidden md:flex items-center gap-6">
-        <RouterLink
-          to="/"
-          class="relative text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors group"
-          :class="{ '!text-white': $route.path === '/' }"
-        >
-          Home
-          <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#0282DE] transition-all duration-300 group-hover:w-full" :class="{ 'w-full': $route.path === '/' }"></span>
-        </RouterLink>
+      <!-- Desktop links -->
+      <div class="hidden md:flex items-center gap-1">
+        <RouterLink to="/" :class="linkClass('/')" :aria-current="isActive('/') ? 'page' : undefined">Home</RouterLink>
         <template v-if="authStore.isLoggedIn">
-          <button
-            @click="navTo('/my-bookings')"
-            class="relative text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors group"
-            :class="{ '!text-white': $route.path === '/my-bookings' }"
+          <RouterLink
+            v-for="link in AUTH_LINKS"
+            :key="link.path"
+            :to="link.path"
+            :class="linkClass(link.path)"
+            :aria-current="isActive(link.path) ? 'page' : undefined"
           >
-            My Bookings
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#0282DE] transition-all duration-300 group-hover:w-full" :class="{ 'w-full': $route.path === '/my-bookings' }"></span>
-          </button>
-          <button
-            @click="navTo('/my-credits')"
-            class="relative text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors group"
-            :class="{ '!text-white': $route.path === '/my-credits' }"
-          >
-            Play Credits
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#0282DE] transition-all duration-300 group-hover:w-full" :class="{ 'w-full': $route.path === '/my-credits' }"></span>
-          </button>
-          <button
-            @click="navTo('/promo')"
-            class="relative text-[#9CA3AF] hover:text-white text-sm font-medium transition-colors group"
-            :class="{ '!text-white': $route.path === '/promo' }"
-          >
-            Promo
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#0282DE] transition-all duration-300 group-hover:w-full" :class="{ 'w-full': $route.path === '/promo' }"></span>
-          </button>
+            {{ link.label }}
+          </RouterLink>
         </template>
       </div>
 
-      <!-- Right: Bell + Profile / Login -->
-      <div class="flex items-center gap-3">
-
-        <!-- Bell notification (logged in only) -->
+      <div class="flex items-center gap-2">
+        <!-- Bell -->
         <div v-if="authStore.isLoggedIn" class="relative">
           <button
-            @click="showBell = !showBell"
-            class="w-9 h-9 flex items-center justify-center rounded-full bg-[#11111E] border border-[#252540] text-[#9CA3AF] hover:text-white hover:border-[#0282DE] transition-all"
+            type="button"
+            :aria-label="expiringCount > 0 ? `Notifikasi, ${expiringCount} belum dibaca` : 'Notifikasi'"
+            :aria-expanded="showBell"
+            :class="ICON_BTN"
+            @click="toggle('bell')"
           >
-            🔔
+            <Bell class="size-[18px]" aria-hidden="true" />
           </button>
-          <div
+          <span
             v-if="expiringCount > 0"
-            class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-          >
-            {{ expiringCount }}
-          </div>
+            class="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-q-red rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+            aria-hidden="true"
+          >{{ expiringCount }}</span>
 
-          <!-- Bell dropdown -->
-          <div
-            v-if="showBell"
-            class="absolute right-0 top-12 w-72 bg-[#11111E] border border-[#252540] rounded-2xl shadow-lg p-4 z-50"
-          >
-            <div class="text-sm font-bold text-white mb-3">Notifikasi</div>
-            <div v-if="!expiringCredits.length" class="text-[#6B7280] text-xs text-center py-4">
-              Tidak ada notifikasi baru
-            </div>
-            <div v-else class="space-y-2">
-              <div v-for="cr in expiringCredits" :key="cr.id" class="bg-[#181828] rounded-xl p-3">
-                <div class="text-xs font-semibold text-orange-400 mb-0.5">⚠️ Credits hampir habis</div>
-                <div class="text-white text-xs font-medium">{{ cr.package?.name }}</div>
-                <div class="text-[#6B7280] text-[11px]">
-                  Sisa {{ cr.remaining_hours }} jam · Expired {{ formatExpiry(cr.expires_at) }}
-                </div>
+          <Transition name="pop">
+            <div v-if="showBell" :class="[MENU, 'w-72 p-4']">
+              <div class="text-sm font-semibold text-q-text mb-3">Notifikasi</div>
+              <div v-if="!expiringCredits.length" class="text-q-text-3 text-xs text-center py-4">
+                Tidak ada notifikasi baru
               </div>
+              <ul v-else class="space-y-2">
+                <li v-for="cr in expiringCredits" :key="cr.id" class="bg-surface-raised rounded-xl p-3">
+                  <div class="flex items-center gap-1.5 text-xs font-semibold text-q-gold mb-0.5">
+                    <TriangleAlert class="size-3.5" aria-hidden="true" /> Credits hampir habis
+                  </div>
+                  <div class="text-q-text text-xs font-medium">{{ cr.package?.name }}</div>
+                  <div class="text-q-text-3 text-[11px]">
+                    Sisa {{ cr.remaining_hours }} jam · Expired {{ formatExpiry(cr.expires_at) }}
+                  </div>
+                </li>
+              </ul>
             </div>
-          </div>
+          </Transition>
         </div>
 
-        <!-- Login button (guest) -->
-        <RouterLink v-if="!authStore.isLoggedIn" to="/login">
-          <button class="px-4 py-2 bg-[#0282DE] hover:bg-[#0160A8] text-white text-sm font-semibold rounded-full transition-all hover:scale-105 hover:shadow-[0_0_15px_rgba(2,130,222,0.4)]">
-            Login
-          </button>
-        </RouterLink>
+        <!-- Guest -->
+        <BaseButton v-if="!authStore.isLoggedIn" to="/login" size="sm" class="rounded-full">Login</BaseButton>
 
-        <!-- Profile dropdown (logged in) -->
+        <!-- Profile -->
         <div v-else class="relative">
           <button
-            @click="showProfile = !showProfile"
-            class="flex items-center gap-2 bg-[#11111E] border border-[#252540] rounded-full pl-1 pr-3 py-1 hover:border-[#0282DE] transition-all"
+            type="button"
+            aria-label="Menu profil"
+            :aria-expanded="showProfile"
+            class="flex items-center gap-2 min-h-11 bg-surface border border-border-subtle rounded-full pl-1 pr-3 hover:border-q-primary transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+            @click="toggle('profile')"
           >
-            <div class="w-7 h-7 rounded-full bg-[#0282DE] flex items-center justify-center text-white font-bold text-xs">
+            <span class="size-8 rounded-full bg-q-primary-strong flex items-center justify-center text-white font-bold text-xs" aria-hidden="true">
               {{ authStore.customer?.name?.[0]?.toUpperCase() }}
-            </div>
-            <span class="hidden md:block text-sm font-medium text-white">
+            </span>
+            <span class="hidden md:block text-sm font-medium text-q-text">
               {{ authStore.customer?.name?.split(' ')[0] }}
             </span>
-            <span class="text-[#6B7280] text-xs">▾</span>
+            <ChevronDown class="size-4 text-q-text-3 transition-transform duration-200" :class="{ 'rotate-180': showProfile }" aria-hidden="true" />
           </button>
 
-          <!-- Profile dropdown menu -->
-          <div
-            v-if="showProfile"
-            class="absolute right-0 top-12 w-48 bg-[#11111E] border border-[#252540] rounded-2xl shadow-lg overflow-hidden z-50"
-          >
-            <RouterLink
-              to="/profile"
-              @click="showProfile = false"
-              class="flex items-center gap-2 px-4 py-3 text-sm text-[#9CA3AF] hover:bg-[#181828] hover:text-white transition-colors"
-            >
-              👤 Profil Saya
-            </RouterLink>
-            <RouterLink
-              to="/my-fnb-orders"
-              @click="showProfile = false"
-              class="flex items-center gap-2 px-4 py-3 text-sm text-[#9CA3AF] hover:bg-[#181828] hover:text-white transition-colors"
-            >
-              🍽️ Pesanan FnB
-            </RouterLink>
-            <div class="border-t border-[#252540]" />
-            <button
-              @click="handleLogout"
-              class="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-[#181828] transition-colors"
-            >
-              🚪 Keluar
-            </button>
-          </div>
+          <Transition name="pop">
+            <div v-if="showProfile" :class="[MENU, 'w-52 py-1']">
+              <RouterLink to="/profile" :class="MENU_ITEM" @click="closeMenus">
+                <User class="size-4" aria-hidden="true" /> Profil Saya
+              </RouterLink>
+              <RouterLink to="/my-fnb-orders" :class="MENU_ITEM" @click="closeMenus">
+                <UtensilsCrossed class="size-4" aria-hidden="true" /> Pesanan FnB
+              </RouterLink>
+              <div class="my-1 border-t border-border-subtle" />
+              <button type="button" :class="[MENU_ITEM, 'w-full text-q-red hover:text-q-red']" @click="handleLogout">
+                <LogOut class="size-4" aria-hidden="true" /> Keluar
+              </button>
+            </div>
+          </Transition>
         </div>
-
       </div>
     </div>
 
-    <!-- Overlay to close all dropdowns -->
-    <div
-      v-if="showProfile || showBell"
-      class="fixed inset-0 z-40"
-      @click="showProfile = false; showBell = false"
-    />
+    <!-- Klik di luar menu → tutup. Di-teleport ke body: backdrop-blur pada <nav>
+         membuat elemen fixed di dalamnya hanya selebar nav, bukan seluruh viewport -->
+    <Teleport to="body">
+      <div v-if="showProfile || showBell" data-menu-overlay class="fixed inset-0 z-40" aria-hidden="true" @click="closeMenus" />
+    </Teleport>
   </nav>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { RouterLink, useRouter }       from 'vue-router'
+import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore }                from '@/stores/authStore'
 import { useToast }                    from '@/composables/useToast'
 import { customerLogout, getCreditsExpiring } from '@/api/authApi'
+import { Bell, ChevronDown, User, UtensilsCrossed, LogOut, TriangleAlert } from 'lucide-vue-next'
+import BaseButton                      from '@/components/ui/BaseButton.vue'
 
 const router    = useRouter()
+const route     = useRoute()
 const authStore = useAuthStore()
 const toast     = useToast()
 
@@ -164,15 +128,31 @@ const showBell        = ref(false)
 const expiringCredits = ref([])
 const expiringCount   = ref(0)
 
-// navTo: guard protected routes — redirect to login if not authenticated
-const navTo = (path) => {
-  showProfile.value = false
-  if (!authStore.isLoggedIn) {
-    router.push({ path: '/login', query: { redirect: path } })
-  } else {
-    router.push(path)
-  }
+const AUTH_LINKS = [
+  { path: '/my-bookings', label: 'My Bookings' },
+  { path: '/my-credits',  label: 'Play Credits' },
+  { path: '/promo',       label: 'Promo' },
+]
+
+const ICON_BTN  = 'relative size-11 flex items-center justify-center rounded-full bg-surface border border-border-subtle text-q-text-2 hover:text-q-text hover:border-q-primary transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring'
+const MENU      = 'absolute right-0 top-13 z-50 origin-top-right bg-surface border border-border-subtle rounded-2xl shadow-card'
+const MENU_ITEM = 'flex items-center gap-2.5 min-h-11 px-4 text-sm text-q-text-2 hover:bg-surface-raised hover:text-q-text transition-colors cursor-pointer'
+
+const isActive  = (path) => (path === '/' ? route.path === '/' : route.path.startsWith(path))
+const linkClass = (path) => [
+  'relative min-h-11 inline-flex items-center px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer',
+  'focus-visible:outline-2 focus-visible:outline-focus-ring',
+  isActive(path) ? 'text-q-text bg-white/5' : 'text-q-text-2 hover:text-q-text',
+]
+
+const closeMenus = () => { showProfile.value = false; showBell.value = false }
+const toggle = (which) => {
+  const open = which === 'bell' ? !showBell.value : !showProfile.value
+  closeMenus()
+  if (which === 'bell') showBell.value = open
+  else showProfile.value = open
 }
+const onKeydown = (e) => { if (e.key === 'Escape') closeMenus() }
 
 const handleLogout = async () => {
   showProfile.value = false
@@ -204,9 +184,11 @@ let pollInterval = null
 onMounted(() => {
   fetchExpiringCredits()
   pollInterval = setInterval(fetchExpiringCredits, 5 * 60 * 1000)
+  window.addEventListener('keydown', onKeydown)
 })
 
 onUnmounted(() => {
   if (pollInterval) clearInterval(pollInterval)
+  window.removeEventListener('keydown', onKeydown)
 })
 </script>

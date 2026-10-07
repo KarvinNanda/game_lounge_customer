@@ -1,78 +1,49 @@
 <template>
-  <div class="min-h-screen bg-q-bg flex items-center justify-center p-4">
+  <div class="flex min-h-dvh items-center justify-center p-4">
     <div class="w-full max-w-sm">
-
-      <!-- Testing banner -->
-      <div class="bg-amber-500/20 border border-amber-500/40 rounded-xl px-4 py-2 text-center mb-6">
-        <span class="text-amber-400 text-xs font-semibold">⚠️ MODE TESTING — Simulasi Pembayaran</span>
-      </div>
-
-      <div class="bg-q-card border border-q-border rounded-3xl overflow-hidden">
-
-        <!-- Header -->
-        <div class="bg-q-primary/20 border-b border-q-border px-6 py-4 text-center">
-          <div class="text-white font-black text-lg">Quantum Gaming Center</div>
-          <div class="text-q-text-2 text-xs mt-0.5">Halaman Pembayaran (Mock)</div>
-        </div>
-
-        <div class="p-6">
-
-          <!-- Amount -->
-          <div class="text-center mb-6">
-            <div class="text-q-text-2 text-sm mb-1">Total Pembayaran</div>
-            <div class="text-3xl font-black text-white">
-              {{ amount ? formatRp(Number(amount)) : '—' }}
-            </div>
-            <div class="text-q-text-3 text-xs mt-1">Invoice: {{ invoiceId || '—' }}</div>
-          </div>
-
-          <!-- Countdown -->
-          <div class="bg-q-card2 rounded-xl p-3 mb-5 text-center">
-            <div class="text-q-text-2 text-xs mb-0.5">Sisa waktu pembayaran</div>
-            <div
-              class="font-bold text-xl transition-colors"
-              :class="timeLeft < 120 ? 'text-q-red' : 'text-white'"
-            >
-              {{ formatCountdown(timeLeft) }}
-            </div>
-          </div>
-
-          <!-- Error -->
-          <div
-            v-if="error"
-            class="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-4 text-q-red text-sm text-center"
-          >
-            {{ error }}
-          </div>
-
-          <!-- Konfirmasi -->
-          <button
-            @click="handleConfirm"
-            :disabled="confirming || timeLeft <= 0"
-            class="w-full py-4 bg-q-primary hover:bg-q-primary-d text-white font-bold rounded-xl transition-colors mb-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <span v-if="confirming">⏳ Memproses...</span>
-            <span v-else-if="timeLeft <= 0">⌛ Waktu Habis</span>
-            <span v-else>✅ Konfirmasi Pembayaran</span>
-          </button>
-
-          <!-- Batal -->
-          <button
-            @click="handleCancel"
-            :disabled="confirming"
-            class="w-full py-3 text-q-text-2 hover:text-white text-sm transition-colors"
-          >
-            ✕ Batalkan Pembayaran
-          </button>
-
-        </div>
-      </div>
-
-      <p class="text-center text-q-text-3 text-xs mt-4 leading-relaxed">
-        Halaman ini hanya muncul saat Xendit belum terdaftar.<br />
-        Setelah akun Xendit aktif, customer akan diarahkan ke halaman Xendit asli.
+      <p class="mb-4 flex items-center justify-center gap-1.5 rounded-xl bg-q-gold/10 px-4 py-2 text-xs font-semibold text-q-gold">
+        <FlaskConical class="size-4" aria-hidden="true" /> Mode testing — simulasi pembayaran
       </p>
 
+      <BaseCard class="shadow-card">
+        <header class="border-b border-border-subtle bg-q-primary/10 px-6 py-4 text-center">
+          <h1 class="font-display text-lg font-semibold text-q-text">Quantum Gaming Center</h1>
+          <p class="text-xs text-q-text-3">Halaman pembayaran (mock)</p>
+        </header>
+
+        <div class="p-6">
+          <div class="mb-5 text-center">
+            <p class="text-sm text-q-text-2">Total pembayaran</p>
+            <p class="font-display text-3xl font-bold text-q-text tabular-nums">{{ amount ? formatRp(Number(amount)) : '—' }}</p>
+            <p class="mt-1 text-xs text-q-text-3">Invoice: {{ invoiceId || '—' }}</p>
+          </div>
+
+          <div v-if="timeLeft !== null" class="mb-5 rounded-xl bg-surface-raised/60 p-3 text-center">
+            <p class="text-xs text-q-text-2">Sisa waktu pembayaran</p>
+            <p
+              class="font-display text-xl font-semibold tabular-nums transition-colors"
+              :class="timeLeft < 120 ? 'text-q-red' : 'text-q-text'"
+              role="timer"
+            >{{ formatCountdown(timeLeft) }}</p>
+          </div>
+
+          <p v-if="error" role="alert" class="mb-4 rounded-xl bg-q-red/10 p-3 text-center text-sm text-q-red">{{ error }}</p>
+
+          <BaseButton size="lg" block :loading="confirming" :disabled="timeLeft === 0" @click="handleConfirm">
+            <template v-if="confirming">Memproses...</template>
+            <template v-else-if="timeLeft === 0">Waktu Habis</template>
+            <template v-else>Konfirmasi Pembayaran</template>
+          </BaseButton>
+          <BaseButton class="mt-2" variant="ghost" block :disabled="confirming" @click="handleCancel">
+            Batalkan pembayaran
+          </BaseButton>
+        </div>
+      </BaseCard>
+
+      <p class="mt-4 text-center text-xs leading-relaxed text-q-text-3">
+        Halaman ini hanya aktif di dev/staging (VITE_ENABLE_MOCK_PAYMENT).
+        Di production customer diarahkan ke halaman Xendit.
+      </p>
     </div>
   </div>
 </template>
@@ -81,6 +52,10 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/index'
+import { paymentSecondsLeft, clearPaymentSession } from '@/utils/payment'
+import { FlaskConical } from 'lucide-vue-next'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 const route  = useRoute()
 const router = useRouter()
@@ -98,14 +73,17 @@ const intentId   = route.query.intent_id
 
 const confirming = ref(false)
 const error      = ref('')
-const timeLeft   = ref(15 * 60)
+// null = expires_at tidak diketahui → countdown disembunyikan (jangan tebak durasi)
+const timeLeft   = ref(paymentSecondsLeft())
 
 let countdownInterval = null
 
 onMounted(() => {
+  if (timeLeft.value === null) return
+  // Hitung ulang dari jam, bukan decrement — tetap akurat walau tab sempat di-background
   countdownInterval = setInterval(() => {
-    if (timeLeft.value > 0) timeLeft.value--
-    else clearInterval(countdownInterval)
+    timeLeft.value = paymentSecondsLeft()
+    if (!timeLeft.value) clearInterval(countdownInterval)
   }, 1000)
 })
 
@@ -121,7 +99,7 @@ const handleConfirm = async () => {
   try {
     if (intentType === 'credits') {
       const { data } = await api.post(`/customer/play-credits/purchase/${intentId}/mock-confirm`)
-      sessionStorage.removeItem('quantum_intent_id')
+      clearPaymentSession()
       router.push({
         name:  'CreditsSuccess',
         query: {
@@ -132,14 +110,14 @@ const handleConfirm = async () => {
       })
     } else if (intentType === 'event') {
       const { data } = await api.post(`/customer/event-bookings/${intentId}/mock-confirm`)
-      sessionStorage.removeItem('quantum_event_id')
+      clearPaymentSession()
       router.push({
         name:  'PaymentSuccess',
         query: { type: 'event', event_name: data.data?.event_name },
       })
     } else {
       const { data } = await api.post(`/customer/bookings/${intentId}/mock-confirm`)
-      sessionStorage.removeItem('quantum_hold_id')
+      clearPaymentSession()
       router.push({
         name:  'PaymentSuccess',
         query: { booking_code: data.data?.booking_code },
@@ -151,8 +129,10 @@ const handleConfirm = async () => {
   }
 }
 
-const handleCancel = () =>
+const handleCancel = () => {
+  clearPaymentSession()
   router.push({ name: intentType === 'credits' ? 'CreditsFailed' : 'PaymentFailed' })
+}
 
 const formatRp = (price) => 'Rp ' + Math.round(price).toLocaleString('id-ID')
 

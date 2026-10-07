@@ -254,6 +254,9 @@ describe('LoginView', () => {
     customerLogin.mockRejectedValue(new Error('Network Error'))
 
     const { wrapper } = await mountLogin()
+    // isi kredensial valid supaya validasi client lolos dan request benar-benar terkirim
+    await wrapper.find('input[type="email"]').setValue('a@test.com')
+    await wrapper.find('input[type="password"]').setValue('pass')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
@@ -269,6 +272,9 @@ describe('LoginView', () => {
     })
 
     const { wrapper } = await mountLogin()
+    // isi kredensial valid supaya validasi client lolos dan request benar-benar terkirim
+    await wrapper.find('input[type="email"]').setValue('a@test.com')
+    await wrapper.find('input[type="password"]').setValue('pass')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
@@ -279,9 +285,75 @@ describe('LoginView', () => {
     customerLogin.mockRejectedValue(new Error('Bad'))
 
     const { wrapper } = await mountLogin()
+    // isi kredensial valid supaya validasi client lolos dan request benar-benar terkirim
+    await wrapper.find('input[type="email"]').setValue('a@test.com')
+    await wrapper.find('input[type="password"]').setValue('pass')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
+  })
+
+  // ── Accessibility ────────────────────────────────────────────────────────────
+
+  it('labels are bound to inputs and autocomplete is set', async () => {
+    const { wrapper } = await mountLogin()
+    expect(wrapper.find('label[for="login-email"]').exists()).toBe(true)
+    expect(wrapper.find('#login-email').attributes('autocomplete')).toBe('email')
+    expect(wrapper.find('#login-password').attributes('autocomplete')).toBe('current-password')
+  })
+
+  it('password toggle has an accessible label that flips', async () => {
+    const { wrapper } = await mountLogin()
+    const toggle = wrapper.find('button[aria-label="Tampilkan password"]')
+    expect(toggle.exists()).toBe(true)
+    await toggle.trigger('click')
+    expect(wrapper.find('button[aria-label="Sembunyikan password"]').exists()).toBe(true)
+  })
+
+  it('announces the error with role="alert"', async () => {
+    customerLogin.mockRejectedValue({ response: { data: { message: 'Email atau password salah' } } })
+    const { wrapper } = await mountLogin()
+    // isi kredensial valid supaya validasi client lolos dan request benar-benar terkirim
+    await wrapper.find('input[type="email"]').setValue('a@test.com')
+    await wrapper.find('input[type="password"]').setValue('pass')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').text()).toContain('Email atau password salah')
+  })
+
+  it('does not call the API and shows an alert when the email is empty or invalid', async () => {
+    const { wrapper } = await mountLogin()
+    await wrapper.find('input[type="email"]').setValue('bukan-email')
+    await wrapper.find('input[type="password"]').setValue('pass')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(customerLogin).not.toHaveBeenCalled()
+    expect(wrapper.find('[role="alert"]').text()).toContain('Masukkan email yang valid')
+  })
+
+  it('does not call the API when the password is empty', async () => {
+    const { wrapper } = await mountLogin()
+    await wrapper.find('input[type="email"]').setValue('a@b.com')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(customerLogin).not.toHaveBeenCalled()
+    expect(wrapper.find('[role="alert"]').text()).toContain('Masukkan password')
+  })
+
+  it('shows the brand wordmark as the page logo', async () => {
+    const { wrapper } = await mountLogin()
+    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Quantum')
+  })
+
+  it('trims the email before sending (mobile keyboards add a trailing space)', async () => {
+    customerLogin.mockResolvedValue({ data: { data: { customer: { name: 'A' } } } })
+    const { wrapper } = await mountLogin()
+    await wrapper.find('input[type="email"]').setValue('  a@test.com ')
+    await wrapper.find('input[type="password"]').setValue('pass')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(customerLogin).toHaveBeenCalledWith({ email: 'a@test.com', password: 'pass' })
   })
 })

@@ -71,6 +71,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { mockConfirmPlayCredits } from '@/api/playCreditsApi'
+import { isMockPaymentEnabled, clearPaymentSession } from '@/utils/payment'
 
 const route        = useRoute()
 const confirming   = ref(false)
@@ -80,23 +81,26 @@ const totalHours   = ref(0)
 const validityDays = ref(0)
 
 onMounted(async () => {
-  // Cek apakah dari mock payment (perlu konfirmasi manual)
-  const intentId = route.query.intent_id || sessionStorage.getItem('quantum_intent_id')
+  // Mock flow menaruh intent_id di URL. Xendit asli (termasuk test mode di staging) tidak,
+  // walau quantum_intent_id ada di sessionStorage — jadi sessionStorage TIDAK dipakai di sini.
+  // Flag tetap wajib: endpoint mock-confirm tidak ada di production.
+  const intentId = route.query.intent_id
 
-  if (intentId) {
+  if (intentId && isMockPaymentEnabled()) {
     confirming.value = true
     try {
       const { data } = await mockConfirmPlayCredits(intentId)
       packageName.value  = data.data?.package_name  || ''
       totalHours.value   = data.data?.total_hours   || 0
       validityDays.value = data.data?.validity_days || 0
-      sessionStorage.removeItem('quantum_intent_id')
+      clearPaymentSession()
     } catch (e) {
       error.value = e?.response?.data?.message || 'Gagal mengkonfirmasi pembayaran'
     } finally {
       confirming.value = false
     }
   } else {
+    clearPaymentSession()
     // Dari Xendit real — ambil data dari query params
     packageName.value  = route.query.package_name  || ''
     totalHours.value   = Number(route.query.total_hours)   || 0

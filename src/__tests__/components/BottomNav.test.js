@@ -66,19 +66,19 @@ describe('BottomNav', () => {
 
   it('renders all nav icons', async () => {
     const wrapper = await makeWrapper()
-    const text = wrapper.text()
-    expect(text).toContain('🏠')
-    expect(text).toContain('📅')
-    expect(text).toContain('🎮')
-    expect(text).toContain('🏷')
-    expect(text).toContain('👤')
+    expect(wrapper.findAll('svg')).toHaveLength(5)
   })
 
   // ── Special floating Credits button ─────────────────────────────────────────
 
-  it('Credits button has the special floating circle (-mt-5) style', async () => {
+  it('Credits button is the raised center action', async () => {
     const wrapper = await makeWrapper()
-    expect(wrapper.find('.-mt-5').exists()).toBe(true)
+    expect(wrapper.find('[data-nav-center]').exists()).toBe(true)
+  })
+
+  it('My Credits button is marked current on /my-credits', async () => {
+    const wrapper = await makeWrapper('/my-credits')
+    expect(wrapper.findAll('button')[1].attributes('aria-current')).toBe('page')
   })
 
   // ── Active state ─────────────────────────────────────────────────────────────
@@ -86,34 +86,34 @@ describe('BottomNav', () => {
   it('Home link is active (text-[#0282DE]) when path is "/"', async () => {
     const wrapper = await makeWrapper('/')
     const homeLink = wrapper.find('a')
-    expect(homeLink.classes()).toContain('text-[#0282DE]')
+    expect(homeLink.attributes('aria-current')).toBe('page')
   })
 
   it('Home link is inactive (text-[#7A8BA8]) when path is "/profile"', async () => {
     const wrapper = await makeWrapper('/profile')
     const homeLink = wrapper.find('a')
-    expect(homeLink.classes()).toContain('text-[#7A8BA8]')
+    expect(homeLink.attributes('aria-current')).toBeUndefined()
   })
 
   it('My Bookings button is active for paths starting with /my-bookings', async () => {
     const wrapper = await makeWrapper('/my-bookings')
     const buttons = wrapper.findAll('button')
     // buttons[0] = My Bookings, [1] = My Credits, [2] = Promo, [3] = Profile
-    expect(buttons[0].classes()).toContain('text-[#0282DE]')
+    expect(buttons[0].attributes('aria-current')).toBe('page')
   })
 
   it('Profile button is active when path is "/profile"', async () => {
     const wrapper = await makeWrapper('/profile')
     const buttons = wrapper.findAll('button')
     // buttons[3] = Profile (last button)
-    expect(buttons[3].classes()).toContain('text-[#0282DE]')
+    expect(buttons[3].attributes('aria-current')).toBe('page')
   })
 
   it('Promo button is active when path is "/promo"', async () => {
     const wrapper = await makeWrapper('/promo')
     const buttons = wrapper.findAll('button')
     // buttons[2] = Promo
-    expect(buttons[2].classes()).toContain('text-[#0282DE]')
+    expect(buttons[2].attributes('aria-current')).toBe('page')
   })
 
   // ── Auth guard: unauthenticated user → openAuthModal ────────────────────────
@@ -157,5 +157,13 @@ describe('BottomNav', () => {
     await buttons[0].trigger('click')  // My Bookings
 
     expect(openSpy).not.toHaveBeenCalled()
+  })
+
+  it('clicking My Credits when logged out opens the login modal for /my-credits', async () => {
+    const wrapper   = await makeWrapper()
+    const authStore = useAuthStore()
+    const openSpy   = vi.spyOn(authStore, 'openAuthModal')
+    await wrapper.findAll('button')[1].trigger('click')
+    expect(openSpy).toHaveBeenCalledWith('/my-credits')
   })
 })

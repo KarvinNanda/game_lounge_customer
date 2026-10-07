@@ -16,6 +16,8 @@ export default defineConfig({
     // Nilai tetap supaya test tidak bergantung pada file .env lokal
     env: {
       VITE_API_URL: 'http://localhost:8080/api',
+      // Zona waktu user (WIB) — supaya test tanggal sama di laptop maupun CI (UTC)
+      TZ: 'Asia/Jakarta',
     },
     css: false, // skip CSS processing — not needed for unit tests
     coverage: {

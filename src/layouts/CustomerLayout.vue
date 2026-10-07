@@ -1,8 +1,13 @@
 <template>
   <div class="min-h-screen bg-q-bg flex flex-col">
     <CustomerNavbar />
-    <main class="flex-1 pb-20 md:pb-0">
-      <RouterView />
+    <!-- Ruang untuk BottomNav (64px + padding) + safe area notch iPhone -->
+    <main class="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <RouterView v-slot="{ Component, route }">
+        <Transition name="page" mode="out-in" @after-leave="notifyPageLeft">
+          <component :is="Component" :key="route.path" />
+        </Transition>
+      </RouterView>
     </main>
     <BottomNav class="md:hidden" />
 
@@ -17,6 +22,7 @@ import CustomerNavbar    from '@/components/CustomerNavbar.vue'
 import BottomNav         from '@/components/BottomNav.vue'
 import LoginPromptModal  from '@/components/LoginPromptModal.vue'
 import { useAuthStore }  from '@/stores/authStore'
+import { notifyPageLeft } from '@/router/scroll'
 
 const authStore = useAuthStore()
 onMounted(() => { if (authStore.isLoggedIn) authStore.fetchMe() })

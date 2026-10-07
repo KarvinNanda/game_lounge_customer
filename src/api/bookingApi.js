@@ -7,6 +7,9 @@ export const getRoomTemplateById      = (id)      => publicApi.get(`/public/room
 
 // Hourly slot grid — replaces old getAvailability
 export const getBookingSlots          = (params)  => publicApi.get('/public/booking/slots', { params })
+// Harga final (paket multi-jam, happy hour, flash sale) — logika sama dengan /bookings/initiate.
+// Axios mengirim array sebagai selected_slots[]=10:00&selected_slots[]=11:00 (format yang diminta backend)
+export const getBookingQuote          = (params)  => publicApi.get('/public/booking/quote', { params })
 // Keep legacy for backward compat if needed
 export const getAvailability          = (params)  => publicApi.get('/public/booking/availability', { params })
 

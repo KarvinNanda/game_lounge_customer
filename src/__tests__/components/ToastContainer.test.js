@@ -58,24 +58,14 @@ describe('ToastContainer', () => {
     expect(wrapper.text()).toContain('File saved!')
   })
 
-  it('displays the correct icon for success toasts', () => {
-    const { wrapper } = mountContainer([{ id: 1, message: 'OK', type: 'success' }])
-    expect(wrapper.text()).toContain('✅')
+  it.each(['success', 'error', 'warning', 'info'])('renders an svg icon for %s toasts', (type) => {
+    const { wrapper } = mountContainer([{ id: 1, message: 'x', type }])
+    expect(wrapper.find(`[data-toast-type="${type}"] svg`).exists()).toBe(true)
   })
 
-  it('displays the correct icon for error toasts', () => {
-    const { wrapper } = mountContainer([{ id: 1, message: 'Fail', type: 'error' }])
-    expect(wrapper.text()).toContain('❌')
-  })
-
-  it('displays the correct icon for warning toasts', () => {
-    const { wrapper } = mountContainer([{ id: 1, message: 'Watch out', type: 'warning' }])
-    expect(wrapper.text()).toContain('⚠️')
-  })
-
-  it('displays the correct icon for info toasts', () => {
-    const { wrapper } = mountContainer([{ id: 1, message: 'FYI', type: 'info' }])
-    expect(wrapper.text()).toContain('ℹ️')
+  it('announces toasts to screen readers', () => {
+    const { wrapper } = mountContainer([])
+    expect(wrapper.find('[aria-live="polite"]').exists()).toBe(true)
   })
 
   // ── Dismiss on click ─────────────────────────────────────────────────────────
@@ -94,9 +84,25 @@ describe('ToastContainer', () => {
       { id: 10, message: 'First',  type: 'success' },
       { id: 20, message: 'Second', type: 'error'   },
     ])
-    const toasts = wrapper.findAll('[class*="cursor-pointer"]')
-    await toasts[1].trigger('click')
+    // error tampil di region alert (paling atas), jadi cari berdasarkan teks, bukan urutan DOM
+    const second = wrapper.findAll('[class*="cursor-pointer"]').find((t) => t.text().includes('Second'))
+    await second.trigger('click')
     expect(mockRemove).toHaveBeenCalledWith(20)
     expect(mockRemove).not.toHaveBeenCalledWith(10)
+  })
+
+  it('announces error toasts assertively (role="alert"), others politely', () => {
+    const { wrapper } = mountContainer([
+      { id: 1, message: 'Gagal', type: 'error' },
+      { id: 2, message: 'Oke',   type: 'success' },
+    ])
+    expect(wrapper.find('[role="alert"]').text()).toContain('Gagal')
+    expect(wrapper.find('[role="alert"]').text()).not.toContain('Oke')
+    expect(wrapper.find('[aria-live="polite"]').text()).toContain('Oke')
+  })
+
+  it('hides an empty live region so it adds no gap', () => {
+    const { wrapper } = mountContainer([{ id: 1, message: 'Oke', type: 'success' }])
+    expect(wrapper.find('[role="alert"]').classes()).toContain('empty:hidden')
   })
 })

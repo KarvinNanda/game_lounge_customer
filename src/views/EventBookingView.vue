@@ -261,6 +261,7 @@ import { useToast }           from '@/composables/useToast'
 import api                                                                from '@/api/index'
 import { getPublicStores, checkEventAvailability, initiateEventBooking } from '@/api/bookingApi'
 import { getImgUrl } from '@/utils/security'
+import { redirectToInvoice, rememberPaymentExpiry, INVALID_PAYMENT_LINK } from '@/utils/payment'
 
 const router    = useRouter()
 const authStore = useAuthStore()
@@ -390,12 +391,15 @@ const handleBookEvent = async () => {
       description:    form.description || undefined,
     })
 
-    const invoiceURL = data.data?.invoice_url
-    const eventId    = data.data?.event_booking_id
-
-    if (invoiceURL) {
+    const eventId = data.data?.event_booking_id
+    const result  = redirectToInvoice(data.data?.invoice_url, () => {
       if (eventId) sessionStorage.setItem('quantum_event_id', eventId)
-      window.location.href = invoiceURL
+      rememberPaymentExpiry(data.data?.expires_at)
+    })
+    if (result === 'invalid') {
+      bookingError.value = INVALID_PAYMENT_LINK
+      toast.error(bookingError.value)
+      initiating.value = false
     }
   } catch (e) {
     bookingError.value = e?.response?.data?.message || 'Gagal membuat event booking'

@@ -1,282 +1,197 @@
-﻿<template>
-  <div class="min-h-screen">
+<template>
+  <div>
+    <!-- ── HERO ─────────────────────────────────────────────── -->
+    <h1 class="sr-only">Quantum Gaming Center</h1>
 
-    <!-- ── HERO BANNER SLIDER ──────────────────────────────────── -->
-    <section class="relative">
+    <section aria-label="Promo">
       <Swiper
         v-if="banners.length"
         :modules="SWIPER_MODULES"
-        :autoplay="{ delay: 4000, disableOnInteraction: false }"
+        :autoplay="{ delay: 5000, disableOnInteraction: false, pauseOnMouseEnter: true }"
         :pagination="{ clickable: true }"
         :loop="banners.length > 1"
         class="w-full"
       >
-        <SwiperSlide v-for="(banner, index) in banners" :key="banner.id">
-          <div
-            class="relative w-full h-[320px] md:h-[440px] cursor-pointer overflow-hidden group"
-            @click="$router.push(`/banner/${banner.id}`)"
+        <SwiperSlide v-for="banner in banners" :key="banner.id">
+          <RouterLink
+            :to="`/banner/${banner.id}`"
+            class="relative block w-full h-[200px] md:h-[340px] overflow-hidden bg-gradient-to-br from-q-card2 via-q-card to-q-bg focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring"
           >
+            <!-- Gambar kosong / gagal dimuat → cukup gradient, jangan tampilkan icon gambar rusak -->
             <img
+              v-if="banner.image_url && !failedBanners.has(banner.id)"
               :src="getImgUrl(banner.image_url)"
-              :alt="banner.title"
-              class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-              :class="index === 0 ? 'animate-fade-in' : ''"
+              alt=""
+              class="hero-kenburns w-full h-full object-cover"
+              fetchpriority="high"
+              @error="failedBanners.add(banner.id)"
             />
-            <div class="absolute inset-0 bg-gradient-to-b from-transparent via-q-bg/30 to-q-bg" />
-            <div class="absolute inset-0 flex flex-col justify-end p-6 md:p-10 animate-fade-in-up delay-200">
-              <h1 class="text-3xl md:text-5xl font-black text-white leading-tight mb-2 drop-shadow-lg">
+            <div class="absolute inset-0 bg-gradient-to-b from-transparent via-q-bg/30 to-q-bg" aria-hidden="true" />
+            <div class="absolute inset-x-0 bottom-0 max-w-6xl mx-auto px-4 sm:px-6 pb-8 md:pb-10">
+              <h2 class="font-display text-2xl md:text-4xl font-bold text-white leading-tight line-clamp-2 drop-shadow-lg">
                 {{ banner.title }}
-              </h1>
-              <p v-if="banner.subtitle" class="text-q-text-2 text-sm md:text-base mb-4 drop-shadow">
+              </h2>
+              <p v-if="banner.subtitle" class="text-q-text-2 text-sm md:text-base mt-1 line-clamp-1">
                 {{ banner.subtitle }}
               </p>
             </div>
-          </div>
+          </RouterLink>
         </SwiperSlide>
       </Swiper>
-
-      <div v-else class="w-full h-[320px] md:h-[440px] bg-q-card animate-pulse" />
+      <BaseSkeleton v-else-if="loadingBanners" class="w-full h-[200px] md:h-[340px] !rounded-none" />
+      <!-- Banner kosong / gagal dimuat → hero statis, bukan skeleton selamanya -->
+      <div
+        v-else
+        data-hero-fallback
+        class="relative w-full h-[200px] md:h-[340px] overflow-hidden bg-gradient-to-br from-q-card2 via-q-card to-q-bg"
+      >
+        <div class="absolute inset-x-0 bottom-0 max-w-6xl mx-auto px-4 sm:px-6 pb-8 md:pb-10">
+          <p class="font-display text-2xl md:text-4xl font-bold text-white leading-tight">Main bareng di Quantum</p>
+          <p class="text-q-text-2 text-sm md:text-base mt-1">Booking ruangan, top up credits, dan pesan F&amp;B dalam satu app.</p>
+        </div>
+      </div>
     </section>
 
-    <!-- Quick Actions — dalam home-container -->
-    <div class="home-container">
-      <section class="py-6">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <!-- ── QUICK ACTIONS ───────────────────────────────────── -->
+      <section class="pt-5 pb-6" aria-label="Aksi cepat">
         <div class="grid grid-cols-3 gap-2 sm:gap-3">
-          <div
-            v-for="(action, index) in QUICK_ACTIONS"
-            :key="action.label"
-            @click="handleQuickAction(action)"
-            class="bg-q-card glass-panel rounded-2xl p-3 sm:p-4
-                   cursor-pointer hover:border-q-primary hover:bg-q-card2 transition-all group animate-fade-in-up hover:-translate-y-1"
-            :style="`animation-delay: ${index * 150}ms;`"
-          >
-            <div class="text-2xl sm:text-3xl mb-2 sm:mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">{{ action.icon }}</div>
-            <div class="font-bold text-white text-xs sm:text-sm mb-1 leading-tight group-hover:text-[#19B9EE] transition-colors">{{ action.label }}</div>
-            <div class="text-q-text-3 text-[10px] sm:text-xs mb-3 sm:mb-4 leading-relaxed hidden sm:block">
-              {{ action.desc }}
-            </div>
-            <div
-              class="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center
-                     text-white text-xs sm:text-sm transition-transform duration-300 group-hover:translate-x-2 mt-2 sm:mt-0 shadow-lg"
-              :style="{ background: action.color }"
+          <RevealOnScroll v-for="(action, i) in QUICK_ACTIONS" :key="action.label" :delay="i * 60">
+            <button
+              type="button"
+              class="group w-full h-full text-left rounded-2xl border border-border-subtle bg-surface/80 p-3 sm:p-4 cursor-pointer transition-[transform,border-color,box-shadow] duration-300 ease-out-expo hover:-translate-y-0.5 hover:border-q-primary/60 hover:shadow-purple-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+              @click="handleQuickAction(action)"
             >
-              →
-            </div>
-          </div>
+              <span class="mb-2 sm:mb-3 inline-flex size-9 sm:size-10 items-center justify-center rounded-xl bg-q-primary/15 text-q-primary-l transition-colors group-hover:bg-q-primary/25">
+                <component :is="action.icon" class="size-5" aria-hidden="true" />
+              </span>
+              <span class="block font-semibold text-q-text text-xs sm:text-sm leading-tight">{{ action.label }}</span>
+              <span class="hidden sm:block text-q-text-3 text-xs mt-1 leading-snug">{{ action.desc }}</span>
+            </button>
+          </RevealOnScroll>
         </div>
       </section>
-    </div>
 
-    <!-- ── REKOMENDASI RUANGAN ───────────────────────────────── -->
-    <section class="py-4">
+      <!-- ── REKOMENDASI RUANGAN ─────────────────────────────── -->
+      <section class="pb-6" aria-label="Rekomendasi Ruangan">
+        <SectionHeader title="Rekomendasi Ruangan" to="/booking" />
 
-      <!-- Header — sejajar dengan section lain via home-container -->
-      <div class="home-container flex items-center justify-between mb-4">
-        <h2 class="text-white font-bold text-lg">Rekomendasi Ruangan</h2>
-      </div>
-
-      <!-- ── DESKTOP: Swiper carousel, 4 slides tampil, navigate kalau ada lebih ── -->
-      <!-- @wheel: Shift+ScrollDown → next, Shift+ScrollUp → prev -->
-      <div class="hidden md:block home-container relative" @wheel.passive="onRoomWheel">
-
-        <!-- Loading skeleton -->
-        <div v-if="loadingRooms" class="grid grid-cols-4 gap-4">
-          <div v-for="i in 4" :key="i"
-            class="h-56 bg-q-card rounded-2xl animate-pulse" />
+        <div v-if="loadingRooms" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <BaseSkeleton v-for="i in 4" :key="i" class="h-44 md:h-52" />
         </div>
 
-        <!-- Swiper Carousel -->
-        <template v-else>
-          <Swiper
-            :modules="ROOM_SWIPER_MODULES"
-            :slides-per-view="4"
-            :space-between="16"
-            :navigation="{
-              prevEl: '.room-swiper-prev',
-              nextEl: '.room-swiper-next',
-              disabledClass: 'room-nav-disabled',
-            }"
-            :pagination="recommendedRooms.length > 4
-              ? { clickable: true, el: '.room-swiper-pagination' }
-              : false"
-            class="room-swiper"
-            @swiper="onRoomSwiper"
-          >
-            <SwiperSlide v-for="(room, index) in recommendedRooms" :key="room.id">
-              <div
-                @click="$router.push(`/room/${room.id}`)"
-                class="glass-panel rounded-2xl overflow-hidden
-                       cursor-pointer transition-all duration-300 group h-full hover:-translate-y-2 hover:shadow-[0_12px_40px_rgba(2,130,222,0.2)] animate-fade-in-up"
-                :style="`animation-delay: ${index * 100}ms;`"
+        <p v-else-if="!displayRooms.length" class="text-q-text-3 text-sm py-6 text-center">
+          Belum ada ruangan tersedia.
+        </p>
+
+        <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <RevealOnScroll v-for="(room, i) in displayRooms" :key="room.id" :delay="i * 60">
+            <BaseCard :tag="RouterLink" :to="`/room/${room.id}`" interactive data-room-card class="block h-full">
+              <div class="relative aspect-[4/3] bg-surface-raised overflow-hidden">
+                <img
+                  v-if="room.image_url"
+                  :src="getImgUrl(room.image_url)"
+                  :alt="room.name"
+                  loading="lazy"
+                  class="w-full h-full object-cover transition-transform duration-500 ease-out-expo group-hover:scale-[1.03]"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center text-q-text-3">
+                  <Gamepad2 class="size-8" aria-hidden="true" />
+                </div>
+                <BaseBadge class="absolute top-2 left-2">
+                  <Users class="size-3" aria-hidden="true" />
+                  <span aria-hidden="true">{{ room.capacity_max }}</span>
+                  <span class="sr-only">Kapasitas hingga {{ room.capacity_max }} orang</span>
+                </BaseBadge>
+                <BaseBadge v-if="isFavorite(room.id)" tone="gold" class="absolute top-2 right-2">
+                  <Star class="size-3" aria-hidden="true" /> Favorit
+                </BaseBadge>
+              </div>
+              <div class="p-3">
+                <div class="text-q-text font-semibold text-sm truncate">{{ room.name }}</div>
+                <div class="text-q-text-3 text-xs mt-0.5">
+                  <template v-if="room.min_price">
+                    Mulai <span class="text-q-gold font-semibold">{{ formatRpShort(room.min_price) }}</span> / jam
+                  </template>
+                  <template v-else>—</template>
+                </div>
+              </div>
+            </BaseCard>
+          </RevealOnScroll>
+        </div>
+      </section>
+
+      <!-- ── FITUR + SOSIAL (satu blok ringkas) ──────────────── -->
+      <section class="pb-8" aria-label="Keunggulan">
+        <BaseCard class="p-4 md:p-5">
+          <ul class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <li v-for="feature in FEATURES" :key="feature.label" class="flex items-center gap-3">
+              <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-q-primary-l">
+                <component :is="feature.icon" class="size-[18px]" aria-hidden="true" />
+              </span>
+              <span>
+                <span class="block text-q-text text-xs font-semibold">{{ feature.label }}</span>
+                <span class="block text-q-text-3 text-xs">{{ feature.desc }}</span>
+              </span>
+            </li>
+          </ul>
+
+          <div class="mt-4 pt-4 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p class="text-q-text-2 text-sm">Ikuti kami untuk update game & promo terbaru</p>
+            <div class="flex items-center gap-2">
+              <a
+                v-for="social in SOCIALS"
+                :key="social.label"
+                :href="social.href"
+                target="_blank"
+                rel="noopener noreferrer"
+                :aria-label="social.label"
+                :class="['size-11 rounded-full flex items-center justify-center text-white transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring', social.bg]"
               >
-                <!-- Gambar -->
-                <div class="relative h-40 bg-q-card2 overflow-hidden">
-                  <img v-if="room.image_url"
-                    :src="getImgUrl(room.image_url)" :alt="room.name"
-                    class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                  <div v-else class="w-full h-full flex items-center justify-center text-4xl transition-transform duration-500 group-hover:scale-110">🎮</div>
-
-                  <!-- Badge kapasitas -->
-                  <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-sm
-                              text-white text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm">
-                    Hingga {{ room.capacity_max }} Orang
-                  </div>
-
-                  <!-- Badge Favorit -->
-                  <div v-if="isFavorite(room.id)"
-                    class="absolute top-2 right-2 bg-amber-400/90 backdrop-blur-sm text-black
-                           text-[10px] font-black px-2 py-0.5 rounded-full
-                           flex items-center gap-0.5 shadow-[0_0_10px_rgba(251,191,36,0.6)] animate-pulse-slow">
-                    ⭐ Favorit
-                  </div>
-                </div>
-
-                <!-- Info -->
-                <div class="p-3 transition-colors duration-300 group-hover:bg-[#020B2E]/60">
-                  <div class="text-white font-semibold text-sm truncate group-hover:text-[#19B9EE] transition-colors">{{ room.name }}</div>
-                  <div class="text-q-text-3 text-xs mt-0.5">
-                    <span v-if="room.min_price">
-                      Mulai <span class="text-white font-bold">{{ formatRpShort(room.min_price) }}</span> / jam
-                    </span>
-                    <span v-else>—</span>
-                  </div>
-                </div>
-              </div>
-            </SwiperSlide>
-          </Swiper>
-
-          <!-- Tombol navigasi ◄ ► — hanya tampil kalau rooms > 4 -->
-          <template v-if="recommendedRooms.length > 4">
-            <button class="room-swiper-prev room-nav-btn">◀</button>
-            <button class="room-swiper-next room-nav-btn room-nav-btn-right">▶</button>
-          </template>
-
-          <!-- Pagination dots — hanya kalau > 4 -->
-          <div v-if="recommendedRooms.length > 4"
-            class="room-swiper-pagination mt-4 flex justify-center" />
-        </template>
-      </div>
-
-      <!-- ── MOBILE: horizontal scroll ── -->
-      <div class="md:hidden">
-        <div v-if="loadingRooms"
-          class="flex gap-3 px-4 pb-2"
-          style="scrollbar-width:none;">
-          <div v-for="i in 3" :key="i"
-            class="flex-shrink-0 w-44 h-52 bg-q-card rounded-2xl animate-pulse" />
-        </div>
-        <div v-else
-          class="flex gap-3 overflow-x-auto px-4 pb-2 scroll-smooth hide-scrollbar"
-          style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
-          <div
-            v-for="(room, index) in recommendedRooms"
-            :key="room.id"
-            @click="$router.push(`/room/${room.id}`)"
-            class="flex-shrink-0 w-44 glass-panel rounded-2xl
-                   overflow-hidden cursor-pointer transition-all duration-300 group hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(2,130,222,0.2)] animate-fade-in-up"
-            :style="`animation-delay: ${index * 100}ms;`"
-          >
-            <div class="relative h-28 bg-q-card2 overflow-hidden">
-              <img v-if="room.image_url" :src="getImgUrl(room.image_url)" :alt="room.name"
-                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-              <div v-else class="w-full h-full flex items-center justify-center text-3xl transition-transform duration-500 group-hover:scale-110">🎮</div>
-              <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px]
-                          font-medium px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm">
-                Hingga {{ room.capacity_max }} Orang
-              </div>
-              <div v-if="isFavorite(room.id)"
-                class="absolute top-2 right-2 bg-amber-400/90 backdrop-blur-sm text-black
-                       text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap shadow-[0_0_10px_rgba(251,191,36,0.6)] animate-pulse-slow">
-                ⭐ Favorit
-              </div>
-            </div>
-            <div class="p-3 transition-colors duration-300 group-hover:bg-[#020B2E]/60">
-              <div class="text-white font-semibold text-sm truncate group-hover:text-[#19B9EE] transition-colors">{{ room.name }}</div>
-              <div class="text-q-text-3 text-xs mt-0.5">
-                <span v-if="room.min_price">
-                  Mulai <span class="text-white font-bold">{{ formatRpShort(room.min_price) }}</span> / jam
-                </span>
-                <span v-else>—</span>
-              </div>
+                <svg class="size-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path :d="social.svgPath" />
+                </svg>
+              </a>
             </div>
           </div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- Feature Highlights + Social — dalam home-container -->
-    <div class="home-container">
-
-      <!-- ── FEATURE HIGHLIGHTS ──────────────────────────────────── -->
-      <section class="py-4 pb-8">
-        <div class="glass-panel rounded-2xl p-4 animate-fade-in-up delay-300">
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div v-for="(feature, index) in FEATURES" :key="feature.label" class="flex items-center gap-3 group">
-              <div class="text-2xl transition-transform duration-300 group-hover:scale-125 group-hover:rotate-6">{{ feature.icon }}</div>
-              <div>
-                <div class="text-white text-xs font-semibold group-hover:text-[#19B9EE] transition-colors">{{ feature.label }}</div>
-                <div class="text-q-text-3 text-[11px]">{{ feature.desc }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
+        </BaseCard>
       </section>
-
-      <!-- ── SOCIAL MEDIA ────────────────────────────────────────── -->
-      <section class="py-4 pb-10">
-        <div class="glass-panel rounded-2xl p-5 text-center animate-fade-in-up delay-400">
-          <div class="text-white font-bold mb-1 tracking-wide">Ikuti Kami</div>
-          <div class="text-q-text-3 text-sm mb-4">Update game & promo terbaru!</div>
-          <div class="flex items-center justify-center gap-4">
-            <a
-              v-for="social in SOCIALS"
-              :key="social.label"
-              :href="social.href"
-              target="_blank"
-              rel="noopener noreferrer"
-              :class="['w-10 h-10 rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110 hover:shadow-[0_0_15px_rgba(255,255,255,0.3)]', social.bg]"
-            >
-              <svg class="w-5 h-5 transition-transform duration-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path :d="social.svgPath" />
-              </svg>
-            </a>
-          </div>
-        </div>
-      </section>
-
     </div>
-
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { Swiper, SwiperSlide } from 'swiper/vue'
-import { Autoplay, Pagination, Navigation } from 'swiper/modules'
+import { Autoplay, Pagination } from 'swiper/modules'
 import { useAuthStore } from '@/stores/authStore'
 import { getBanners } from '@/api/bannerApi'
 import api from '@/api/index'
 import { getImgUrl } from '@/utils/security'
+import { CalendarCheck, CreditCard, PartyPopper, Gamepad2, UtensilsCrossed, Award, ShieldCheck, Users, Star } from 'lucide-vue-next'
+import BaseCard       from '@/components/ui/BaseCard.vue'
+import BaseBadge      from '@/components/ui/BaseBadge.vue'
+import BaseSkeleton   from '@/components/ui/BaseSkeleton.vue'
+import SectionHeader  from '@/components/ui/SectionHeader.vue'
+import RevealOnScroll from '@/components/ui/RevealOnScroll.vue'
 
 const router    = useRouter()
 const authStore = useAuthStore()
 
 const SWIPER_MODULES = [Autoplay, Pagination]
-const ROOM_SWIPER_MODULES = [Navigation, Pagination]
 
 const QUICK_ACTIONS = [
-  { label: 'Booking',               icon: '📅', desc: 'Book room favoritmu sekarang', color: '#0282DE', path: '/booking',       requiresAuth: true },
-  { label: 'Top Up Play Credits',   icon: '💳', desc: 'Lebih hemat pakai credits',    color: '#0EA5E9', path: '/credits',       requiresAuth: true },
-  { label: 'Private Event Booking', icon: '🏠', desc: 'Acara seru? Kita siap!',       color: '#10B981', path: '/event-booking', requiresAuth: true },
+  { label: 'Booking',               icon: CalendarCheck, desc: 'Book room favoritmu sekarang', path: '/booking',       requiresAuth: true },
+  { label: 'Top Up Play Credits',   icon: CreditCard,    desc: 'Lebih hemat pakai credits',    path: '/credits',       requiresAuth: true },
+  { label: 'Private Event Booking', icon: PartyPopper,   desc: 'Acara seru? Kita siap!',       path: '/event-booking', requiresAuth: true },
 ]
 
 const FEATURES = [
-  { icon: '🎮', label: 'Game Terlengkap',    desc: 'Update setiap minggu' },
-  { icon: '🍔', label: 'Makanan & Minuman',  desc: 'Harga terjangkau' },
-  { icon: '⭐', label: 'Points & Rewards',   desc: 'Kumpulkan & tukarkan' },
-  { icon: '🛡️', label: 'Aman & Terpercaya', desc: 'Privasi terjamin' },
+  { icon: Gamepad2,        label: 'Game Terlengkap',    desc: 'Update setiap minggu' },
+  { icon: UtensilsCrossed, label: 'Makanan & Minuman',  desc: 'Harga terjangkau' },
+  { icon: Award,           label: 'Points & Rewards',   desc: 'Kumpulkan & tukarkan' },
+  { icon: ShieldCheck,     label: 'Aman & Terpercaya', desc: 'Privasi terjamin' },
 ]
 
 const SOCIALS = [
@@ -301,26 +216,15 @@ const SOCIALS = [
 ]
 
 const banners           = ref([])
+const loadingBanners    = ref(true)
+const failedBanners     = reactive(new Set()) // id banner yang gambarnya gagal dimuat
 const allRoomTemplates    = ref([])   // semua room templates dari API
-const recommendedRooms    = ref([])   // semua rooms: favorites dulu, sisanya random (tanpa batas)
+const recommendedRooms    = ref([])   // semua rooms: favorites dulu, sisanya random
 const loadingRooms        = ref(true)
-const roomSwiperInstance  = ref(null) // instance Swiper untuk kontrol manual (Shift+Scroll)
 
-// ── Swiper instance callback ─────────────────────────────────
-const onRoomSwiper = (swiper) => {
-  roomSwiperInstance.value = swiper
-}
-
-// ── Shift + Scroll → navigasi carousel ──────────────────────
-// Shift+ScrollDown → slideNext  |  Shift+ScrollUp → slidePrev
-const onRoomWheel = (e) => {
-  if (!e.shiftKey) return
-  if (e.deltaY > 0) {
-    roomSwiperInstance.value?.slideNext()
-  } else {
-    roomSwiperInstance.value?.slidePrev()
-  }
-}
+// Minim scroll: Home hanya menampilkan ringkasan, sisanya lewat "Lihat semua"
+const ROOM_LIMIT   = 4
+const displayRooms = computed(() => recommendedRooms.value.slice(0, ROOM_LIMIT))
 
 // Favorite room template IDs dari customer yang login
 const favoriteIds = computed(() => {
@@ -329,8 +233,8 @@ const favoriteIds = computed(() => {
   return favs.map(f => f.room_template_id || f.room_template?.id).filter(Boolean)
 })
 
-// Bangun daftar rekomendasi: favorites dulu, sisanya random
-// Tidak di-cap — semua rooms masuk ke swiper (4 tampil sekaligus, sisanya navigate)
+// Bangun daftar rekomendasi: favorites dulu, sisanya random.
+// Tampilan dibatasi ROOM_LIMIT via displayRooms.
 const buildRecommendations = () => {
   if (!allRoomTemplates.value.length) return
 
@@ -339,7 +243,6 @@ const buildRecommendations = () => {
   const nonFavorites = allRoomTemplates.value.filter(r => !favIds.includes(r.id))
   const shuffled     = [...nonFavorites].sort(() => Math.random() - 0.5)
 
-  // Semua rooms tanpa batas: favorites di depan, non-favorites random di belakang
   recommendedRooms.value = [...favorites, ...shuffled]
 }
 
@@ -374,9 +277,6 @@ const formatRpShort = (price) => {
   return `Rp ${price}`
 }
 
-const formatCapacity = (min, max) =>
-  min === max ? `${max} Orang` : `Hingga ${max} Orang`
-
 const handleQuickAction = (action) => {
   if (action.requiresAuth && !authStore.isLoggedIn) {
     authStore.openAuthModal(action.path) // pakai global modal dari CustomerLayout
@@ -391,90 +291,10 @@ onMounted(async () => {
     banners.value = data.data || []
   } catch {
     banners.value = []
+  } finally {
+    loadingBanners.value = false
   }
 
   fetchRooms()
 })
 </script>
-
-<style scoped>
-/* Container utama — semua sections sejajar di sini */
-.home-container {
-  max-width: 1152px;       /* max-w-6xl */
-  margin: 0 auto;
-  padding-left: 1rem;      /* 16px mobile */
-  padding-right: 1rem;
-  --container-padding: 1rem;
-}
-@media (min-width: 640px) {
-  .home-container {
-    padding-left: 1.5rem;  /* 24px sm+ */
-    padding-right: 1.5rem;
-    --container-padding: 1.5rem;
-  }
-}
-
-/* Room cards scroll: overflow keluar container dengan negative margin */
-.rooms-scroll {
-  margin-left:  calc(-1 * var(--container-padding));
-  margin-right: calc(-1 * var(--container-padding));
-  padding-left:  var(--container-padding);
-  padding-right: var(--container-padding);
-}
-
-/* Sembunyikan scrollbar tapi tetap bisa scroll horizontal */
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* ── Room Swiper (Desktop) ── */
-.room-swiper {
-  width: 100%;
-  /* biarkan overflow: hidden (default Swiper) — slide ke-5+ harus tersembunyi sampai di-navigate */
-}
-
-/* Tombol navigasi ◄ ► */
-.room-nav-btn {
-  position: absolute;
-  top: 40%; /* center pada area gambar */
-  transform: translateY(-50%);
-  z-index: 10;
-  width: 36px;
-  height: 36px;
-  background: rgba(2, 130, 222, 0.85);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  box-shadow: 0 2px 12px rgba(2, 130, 222, 0.4);
-}
-.room-nav-btn:hover {
-  background: #0282DE;
-  transform: translateY(-50%) scale(1.1);
-}
-.room-swiper-prev   { left: -18px; }
-.room-nav-btn-right { right: -18px; }
-
-/* Disabled state di ujung slide */
-.room-nav-disabled {
-  opacity: 0.3 !important;
-  cursor: not-allowed !important;
-}
-
-/* Pagination dots */
-.room-swiper-pagination :deep(.swiper-pagination-bullet) {
-  background: #7A8BA8;
-  opacity: 1;
-  width: 6px;
-  height: 6px;
-}
-.room-swiper-pagination :deep(.swiper-pagination-bullet-active) {
-  background: #0282DE;
-  width: 18px;
-  border-radius: 3px;
-}
-</style>

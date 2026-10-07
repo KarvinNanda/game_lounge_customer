@@ -1,93 +1,87 @@
 <template>
-  <div class="min-h-screen bg-q-bg flex items-center justify-center p-4">
-    <div class="w-full max-w-sm">
+  <div class="relative min-h-dvh flex items-center justify-center p-4 overflow-hidden">
+    <div class="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 size-[520px] rounded-full bg-q-primary/15 blur-3xl" aria-hidden="true" />
 
+    <div class="relative w-full max-w-sm">
       <button
         v-if="route.query.redirect"
+        type="button"
+        class="mb-4 inline-flex items-center gap-1.5 min-h-11 rounded-md text-q-text-2 hover:text-q-text text-sm transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-focus-ring"
         @click="$router.back()"
-        class="flex items-center gap-2 text-q-text-2 hover:text-white text-sm mb-6 transition-colors"
       >
-        ← Kembali
+        <ArrowLeft class="size-4" aria-hidden="true" /> Kembali
       </button>
 
-      <!-- Logo -->
-      <div class="text-center mb-8">
-        <img
-          src="@/assets/logo.png"
-          alt="Quantum Gaming Center"
-          class="h-16 w-auto mx-auto mb-3 object-contain"
-          @error="logoError = true"
-        />
-        <div v-if="logoError" class="text-white font-black text-3xl tracking-wide">Quantum</div>
-        <div class="text-q-text-3 text-xs font-medium tracking-[0.25em] uppercase mt-1">Gaming Center</div>
+      <div class="text-center mb-6">
+        <div class="font-display text-q-text font-bold text-3xl tracking-wide">Quantum</div>
+        <div class="text-q-text-3 text-xs font-medium tracking-[0.25em] uppercase">Gaming Center</div>
       </div>
 
-      <!-- Card -->
-      <div class="bg-q-card border border-q-border rounded-3xl p-7">
-        <h2 class="text-xl font-bold text-white mb-1">Selamat Datang!</h2>
-        <p class="text-q-text-3 text-sm mb-6">Login untuk mulai bermain</p>
+      <div class="bg-surface/80 backdrop-blur-sm border border-border-subtle rounded-3xl p-6 shadow-card">
+        <h1 class="font-display text-xl font-semibold text-q-text mb-1">Selamat Datang!</h1>
+        <p class="text-q-text-3 text-sm mb-5">Login untuk mulai bermain</p>
 
-        <form @submit.prevent="handleLogin" class="space-y-4">
-
+        <form class="space-y-4" novalidate @submit.prevent="handleLogin">
           <div>
-            <label class="block text-sm font-medium text-q-text-2 mb-1.5">Email</label>
+            <label for="login-email" class="block text-sm font-medium text-q-text-2 mb-1.5">Email</label>
             <input
+              id="login-email"
               v-model="form.email"
               type="email"
+              autocomplete="email"
               placeholder="email@kamu.com"
               required
-              class="w-full bg-q-card2 border border-q-border rounded-xl px-4 py-3 text-white text-sm placeholder-q-text-3 focus:outline-none focus:border-q-primary transition-colors"
+              :class="INPUT"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-q-text-2 mb-1.5">Password</label>
+            <label for="login-password" class="block text-sm font-medium text-q-text-2 mb-1.5">Password</label>
             <div class="relative">
               <input
+                id="login-password"
                 v-model="form.password"
                 :type="showPass ? 'text' : 'password'"
+                autocomplete="current-password"
                 placeholder="Password kamu"
                 required
-                class="w-full bg-q-card2 border border-q-border rounded-xl px-4 py-3 text-white text-sm placeholder-q-text-3 focus:outline-none focus:border-q-primary transition-colors pr-11"
+                :class="[INPUT, 'pr-12']"
               />
               <button
                 type="button"
+                :aria-label="showPass ? 'Sembunyikan password' : 'Tampilkan password'"
+                :aria-pressed="showPass"
+                class="absolute right-0 top-0 size-11 flex items-center justify-center rounded-xl text-q-text-3 hover:text-q-text-2 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-focus-ring"
                 @click="showPass = !showPass"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-q-text-3 hover:text-q-text-2 transition-colors text-sm"
               >
-                {{ showPass ? '🙈' : '👁️' }}
+                <EyeOff v-if="showPass" class="size-[18px]" aria-hidden="true" />
+                <Eye v-else class="size-[18px]" aria-hidden="true" />
               </button>
             </div>
           </div>
 
-          <p v-if="error" class="text-q-red text-sm text-center bg-red-500/10 rounded-xl py-2 px-3">
+          <p v-if="error" role="alert" class="text-q-red text-sm text-center bg-q-red/10 rounded-xl py-2 px-3">
             {{ error }}
           </p>
 
-          <button
-            type="submit"
-            :disabled="loading"
-            class="w-full py-3.5 bg-q-primary hover:bg-q-primary-d text-white font-bold rounded-xl transition-colors shadow-purple disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <BaseButton type="submit" size="lg" block :loading="loading">
             {{ loading ? 'Memproses...' : 'Login Sekarang' }}
-          </button>
-
+          </BaseButton>
         </form>
 
         <div class="text-center mt-4">
           <RouterLink
             to="/forgot-password"
-            class="text-q-primary hover:text-q-primary-l text-sm transition-colors"
+            class="inline-flex min-h-11 items-center text-q-primary-l hover:text-q-text text-sm transition-colors rounded-md focus-visible:outline-2 focus-visible:outline-focus-ring"
           >
             Lupa Password?
           </RouterLink>
         </div>
 
-        <p class="text-center text-q-text-3 text-xs mt-4 border-t border-q-border pt-4 leading-relaxed">
+        <p class="text-center text-q-text-3 text-xs mt-3 border-t border-border-subtle pt-4 leading-relaxed">
           Belum punya akun? Hubungi admin atau kasir Quantum terdekat.
         </p>
       </div>
-
     </div>
   </div>
 </template>
@@ -99,6 +93,10 @@ import { customerLogin } from '@/api/authApi'
 import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
 import { sanitizeRedirect } from '@/utils/security'
+import { ArrowLeft, Eye, EyeOff } from 'lucide-vue-next'
+import BaseButton from '@/components/ui/BaseButton.vue'
+
+const INPUT = 'w-full min-h-11 bg-surface-raised/60 border border-border-subtle rounded-xl px-4 py-2.5 text-q-text text-sm placeholder:text-q-text-3 transition-colors focus:outline-none focus:border-q-primary focus:ring-2 focus:ring-q-primary/30'
 
 const router    = useRouter()
 const route     = useRoute()
@@ -108,18 +106,27 @@ const toast     = useToast()
 const loading   = ref(false)
 const error     = ref('')
 const showPass  = ref(false)
-const logoError = ref(false)
 const form      = reactive({ email: '', password: '' })
 
+// Cek ringan di client: jangan kirim request yang pasti ditolak
+// (menghemat kuota rate limit login di backend). Validasi sebenarnya tetap di server.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const validate = () => {
+  if (!EMAIL_RE.test(form.email.trim())) return 'Masukkan email yang valid'
+  if (!form.password)                    return 'Masukkan password'
+  return ''
+}
+
 const handleLogin = async () => {
-  error.value   = ''
+  error.value = validate()
+  if (error.value) return
   loading.value = true
   try {
     const { data } = await customerLogin(form)
     // Cookie httpOnly di-set otomatis oleh backend — body hanya berisi data customer
     authStore.setAuth(data.data.customer)
     const name = data.data.customer?.name?.split(' ')[0] || 'Kamu'
-    toast.success(`Selamat datang, ${name}! 🎮`)
+    toast.success(`Selamat datang, ${name}!`)
     // sanitizeRedirect: hanya internal path — cegah open redirect (?redirect=//evil.com)
     const target = sanitizeRedirect(route.query.redirect)
     router.push(target === '/login' ? '/' : target)
