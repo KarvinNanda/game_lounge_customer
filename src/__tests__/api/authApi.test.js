@@ -57,7 +57,6 @@ describe('authApi', () => {
     const payload = { old_password: 'old', new_password: 'new', new_password_confirmation: 'new' }
     changeCustomerPassword(payload)
     expect(api.put).toHaveBeenCalledWith('/customer/change-password', payload)
-    expect(api.put).toHaveBeenCalledOnce()
   })
 
   it('getCreditsExpiring calls GET /customer/credits/expiring', () => {

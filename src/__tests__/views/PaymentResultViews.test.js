@@ -4,8 +4,9 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 
 const toast = { success: vi.fn(), error: vi.fn() }
 vi.mock('@/composables/useToast', () => ({ useToast: () => toast }))
-vi.mock('@/api/bookingApi', () => ({ getMyBookings: vi.fn() }))
-import { getMyBookings } from '@/api/bookingApi'
+vi.mock('@/api/bookingApi', () => ({ getMyBookings: vi.fn(), getBookingByHold: vi.fn() }))
+import { getMyBookings, getBookingByHold } from '@/api/bookingApi'
+const HOLD = '3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b'
 import PaymentSuccessView from '@/views/PaymentSuccessView.vue'
 import PaymentFailedView from '@/views/PaymentFailedView.vue'
 
@@ -27,9 +28,36 @@ describe('PaymentSuccessView', () => {
     expect(w.find('[role="status"]').exists()).toBe(true)
   })
 
-  it('falls back to the latest booking after a gateway redirect', async () => {
-    const w = await at(PaymentSuccessView, '/payment/success')
-    expect(w.text()).toContain('BK-LATEST')
+  it('after a gateway redirect it never guesses from the bookings list', async () => {
+    // List backend diurutkan menurut jadwal, bukan waktu bayar → "booking teratas" bisa booking lain
+    getBookingByHold.mockResolvedValue({ data: { data: { status: 'pending' } } })
+    await at(PaymentSuccessView, `/payment/success?hold_id=${HOLD}`)
+    expect(getMyBookings).not.toHaveBeenCalled()
+  })
+
+  it('shows a waiting state, then the code once the hold is confirmed', async () => {
+    let resolve
+    getBookingByHold.mockImplementationOnce(() => new Promise((r) => { resolve = r }))
+    const w = await at(PaymentSuccessView, `/payment/success?hold_id=${HOLD}`)
+    expect(getBookingByHold).toHaveBeenCalledWith(HOLD)
+    expect(w.text()).toContain('Mengonfirmasi pembayaran')
+    resolve({ data: { data: { status: 'confirmed', booking_code: 'BK-0042' } } }); await flushPromises()
+    expect(w.text()).toContain('BK-0042')
+    expect(w.findAll('button').some((b) => b.text().includes('Salin'))).toBe(true)
+  })
+
+  it('an invalid hold id points to My Bookings without calling the API', async () => {
+    const w = await at(PaymentSuccessView, '/payment/success?hold_id=h1')
+    expect(getBookingByHold).not.toHaveBeenCalled()
+    expect(w.text()).toContain('My Bookings')
+    expect(w.text()).not.toContain('Mengonfirmasi pembayaran')
+    expect(w.findAll('button').some((b) => b.text().includes('Salin'))).toBe(false)
+    expect(w.find('a[href="/my-bookings"]').exists()).toBe(true)
+  })
+
+  it('a code already in the URL (mock payment) is used without polling', async () => {
+    await at(PaymentSuccessView, `/payment/success?booking_code=BK-123&hold_id=${HOLD}`)
+    expect(getBookingByHold).not.toHaveBeenCalled()
   })
 
   it('event bookings show the event name, not a booking code', async () => {
@@ -49,10 +77,11 @@ describe('PaymentSuccessView', () => {
 describe('PaymentSuccessView untrusted query', () => {
   beforeEach(() => { vi.clearAllMocks(); getMyBookings.mockResolvedValue({ data: { data: [{ booking_code: 'BK-REAL' }] } }) })
 
-  it('ignores a booking_code that is not a booking code and loads the real one', async () => {
+  it('ignores a booking_code that is not a booking code and shows no code at all', async () => {
     const w = await at(PaymentSuccessView, '/payment/success?booking_code=' + encodeURIComponent('HUBUNGI WA 0812-xxx untuk refund'))
     expect(w.text()).not.toContain('HUBUNGI')
-    expect(w.text()).toContain('BK-REAL')
+    expect(w.text()).not.toContain('BK-REAL')
+    expect(w.text()).toContain('My Bookings')
   })
 
   it('caps event_name and ignores array params', async () => {

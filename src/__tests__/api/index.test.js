@@ -81,4 +81,14 @@ describe('api/index', () => {
       expect(err).toBe(error)
     })
   })
+
+  it('every 401 ends the session, whatever the request config says', async () => {
+    localStorage.setItem('customer_data', '{"name":"Test"}')
+    window.location.href = '/profile'
+    const handler = api.interceptors.response.handlers.find(Boolean)
+    const error = { response: { status: 401 }, config: { skipAuthRedirect: true } }
+    await expect(handler.rejected(error)).rejects.toBe(error)
+    expect(localStorage.getItem('customer_data')).toBeNull()
+    expect(window.location.href).toBe('/login')
+  })
 })

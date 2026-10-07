@@ -8,13 +8,15 @@ import { useAuthStore } from '@/stores/authStore'
 const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }
 vi.mock('@/composables/useToast', () => ({ useToast: () => toast }))
 vi.mock('@/api/authApi', () => ({ getCustomerMe: vi.fn() }))
-vi.mock('@/api/bookingApi', () => ({ getPublicStores: vi.fn(), checkEventAvailability: vi.fn(), initiateEventBooking: vi.fn() }))
+vi.mock('@/api/bookingApi', () => ({ getPublicStores: vi.fn(), getEventQuote: vi.fn(), initiateEventBooking: vi.fn() }))
 
 import * as api from '@/api/bookingApi'
 import { useEventBooking } from '@/composables/useEventBooking'
 
 const ok = (data) => ({ data: { data } })
-const avail = (blocked = null, perDay = 2400000) => ok({ blocked_ranges: blocked, event_price: { price_per_day: perDay } })
+// Bentuk respons GET /public/event-booking/quote
+const quote = (available = true, total = 400000) => ok({ store_id: 's1', booking_date: '2026-10-10', start_time: '14:00', end_time: '18:00', duration_hours: 4, price_per_day: 2400000, total_price: total, available })
+const badRequest = (message) => Object.assign(new Error('400'), { response: { status: 400, data: { message } } })
 
 const setup = async () => {
   const pinia = createPinia(); setActivePinia(pinia)
@@ -33,7 +35,7 @@ describe('useEventBooking', () => {
     vi.clearAllMocks()
     window.location.href = ''
     api.getPublicStores.mockResolvedValue(ok([{ id: 's1', name: 'Bekasi' }]))
-    api.checkEventAvailability.mockResolvedValue(avail())
+    api.getEventQuote.mockResolvedValue(quote())
   })
   afterEach(() => { vi.useRealTimers() })
 
@@ -42,40 +44,52 @@ describe('useEventBooking', () => {
     expect((await setup()).today).toBe('2026-10-08')
   })
 
-  it('checks availability for the chosen branch and date and estimates the price', async () => {
+  it('asks the server quote for the exact schedule and uses its total_price', async () => {
+    api.getEventQuote.mockResolvedValue(quote(true, 401000))
     const e = await setup(); schedule(e)
     await e.checkAvailability()
-    expect(api.checkEventAvailability).toHaveBeenCalledWith({ store_id: 's1', date: '2026-10-10' })
+    expect(api.getEventQuote).toHaveBeenCalledWith({ store_id: 's1', booking_date: '2026-10-10', start_time: '14:00', end_time: '18:00' })
     expect(e.availability.value).toBe('available')
-    expect(e.durationHours.value).toBe(4)
-    expect(e.estimatedPrice.value).toBe(400000) // 2.400.000 / 24 × 4
+    expect(e.totalPrice.value).toBe(401000) // angka server, bukan hitungan lokal 2.400.000 / 24 × 4
   })
 
-  it('detects a conflict, including ranges that cross midnight', async () => {
-    api.checkEventAvailability.mockResolvedValue(avail([{ start_time: '22:00', end_time: '02:00' }]))
+  it('available: false from the quote is a conflict (server also covers overnight events)', async () => {
+    api.getEventQuote.mockResolvedValue(quote(false))
     const e = await setup(); schedule(e, '23:00', '01:00')
     await e.checkAvailability()
     expect(e.availability.value).toBe('conflict')
+    expect(e.totalPrice.value).toBeNull()
+    expect(e.canPay.value).toBe(false)
+  })
+
+  it('a 400 from the quote shows the server message and blocks paying', async () => {
+    api.getEventQuote.mockRejectedValue(badRequest('harga event untuk cabang ini belum dikonfigurasi'))
+    const e = await setup(); schedule(e)
+    Object.assign(e.form, { eventName: 'Ultah', paymentMethod: 'qris' })
+    await e.checkAvailability()
+    expect(e.availability.value).toBe('error')
+    expect(e.quoteError.value).toBe('harga event untuk cabang ini belum dikonfigurasi')
     expect(e.canPay.value).toBe(false)
   })
 
   it('a failed availability check is an error with no guessed price and no paying', async () => {
-    api.checkEventAvailability.mockRejectedValue(new Error('timeout'))
+    api.getEventQuote.mockRejectedValue(new Error('timeout'))
     const e = await setup(); schedule(e)
     e.form.eventName = 'Ultah'; e.form.paymentMethod = 'qris'
     await e.checkAvailability()
     expect(e.availability.value).toBe('error')
-    expect(e.estimatedPrice.value).toBeNull()
+    expect(e.totalPrice.value).toBeNull()
+    expect(e.quoteError.value).toBe('')
     expect(e.canPay.value).toBe(false)
   })
 
   it('ignores an availability response for a schedule the user already changed', async () => {
     let resolveOld
-    api.checkEventAvailability.mockImplementationOnce(() => new Promise((r) => { resolveOld = r }))
+    api.getEventQuote.mockImplementationOnce(() => new Promise((r) => { resolveOld = r }))
     const e = await setup(); schedule(e)
     const first = e.checkAvailability()
     e.form.startTime = '15:00'               // jadwal berubah → status lama tidak berlaku
-    resolveOld(avail([{ start_time: '15:00', end_time: '16:00' }]))
+    resolveOld(quote(false))
     await first
     expect(e.availability.value).toBe('idle')
   })
@@ -117,12 +131,12 @@ describe('useEventBooking', () => {
     const e = await setup(); schedule(e, '10:00', '10:00')
     expect(e.durationHours.value).toBe(0)
     await e.checkAvailability()
-    expect(api.checkEventAvailability).not.toHaveBeenCalled()
+    expect(api.getEventQuote).not.toHaveBeenCalled()
   })
 
   it('an old response does not cancel a newer check still in progress', async () => {
     let resolveOld, resolveNew
-    api.checkEventAvailability
+    api.getEventQuote
       .mockImplementationOnce(() => new Promise((r) => { resolveOld = r }))
       .mockImplementationOnce(() => new Promise((r) => { resolveNew = r }))
     const e = await setup(); schedule(e)
@@ -130,16 +144,9 @@ describe('useEventBooking', () => {
     e.form.endTime = '19:00'
     await flushPromises()
     const second = e.checkAvailability()
-    resolveOld(avail()); await first
+    resolveOld(quote()); await first
     expect(e.availability.value).toBe('checking')
-    resolveNew(avail()); await second
+    resolveNew(quote()); await second
     expect(e.availability.value).toBe('available')
-  })
-
-  it('a missing price_per_day gives no estimate (shown as "—", not Rp 0)', async () => {
-    api.checkEventAvailability.mockResolvedValue(avail(null, 0))
-    const e = await setup(); schedule(e)
-    await e.checkAvailability()
-    expect(e.estimatedPrice.value).toBe(null)
   })
 })

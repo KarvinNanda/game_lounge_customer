@@ -1,143 +1,77 @@
 <template>
-  <div class="max-w-lg mx-auto px-4 py-8">
+  <div class="mx-auto max-w-lg px-4 sm:px-6 py-6">
+    <PageHeader title="Profil Saya" />
 
-    <h1 class="text-2xl font-bold text-white mb-6">Profil Saya</h1>
-
-    <!-- Avatar + info -->
-    <div class="bg-q-card border border-q-border rounded-2xl p-6 mb-4">
-      <div class="flex items-center gap-4 mb-6">
-        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-q-primary to-q-primary-d flex items-center justify-center text-white font-black text-2xl shadow-purple">
+    <BaseCard class="mb-4 p-5">
+      <div class="mb-5 flex items-center gap-4">
+        <span class="flex size-14 items-center justify-center rounded-full bg-q-primary-strong font-display text-xl font-bold text-white" aria-hidden="true">
           {{ customerInitial }}
-        </div>
-        <div>
-          <div class="text-white font-bold text-lg">{{ authStore.customer?.name }}</div>
-          <span
-            class="text-xs px-2 py-0.5 rounded-full font-semibold"
-            :class="authStore.isMember ? 'bg-q-primary/20 text-q-primary-l' : 'bg-q-card2 text-q-text-2'"
-          >
-            {{ authStore.isMember ? '⭐ Member' : 'Regular' }}
-          </span>
+        </span>
+        <div class="min-w-0">
+          <p class="truncate font-semibold text-q-text">{{ authStore.customer?.name }}</p>
+          <BaseBadge :tone="authStore.isMember ? 'gold' : 'neutral'">
+            <Crown v-if="authStore.isMember" class="size-3" aria-hidden="true" />
+            {{ authStore.isMember ? 'Member' : 'Regular' }}
+          </BaseBadge>
         </div>
       </div>
 
-      <div class="space-y-4">
+      <form aria-label="Data diri" class="space-y-4" novalidate @submit.prevent="handleSaveProfile">
         <div>
-          <label class="block text-sm font-medium text-q-text-2 mb-1.5">Nama</label>
-          <input
-            v-model="form.name"
-            type="text"
-            class="w-full bg-q-card2 border border-q-border rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-q-primary transition-colors"
-          />
+          <label for="profile-name" :class="LABEL">Nama</label>
+          <input id="profile-name" v-model="form.name" type="text" autocomplete="name" required :class="INPUT" :aria-invalid="nameError ? 'true' : undefined" :aria-describedby="nameError ? 'profile-name-error' : undefined" />
+          <p v-if="nameError" id="profile-name-error" role="alert" class="mt-1 text-xs text-q-red">{{ nameError }}</p>
         </div>
-
         <div>
-          <label class="block text-sm font-medium text-q-text-2 mb-1.5">Nomor WhatsApp</label>
-          <input
-            v-model="form.whatsapp"
-            type="tel"
-            class="w-full bg-q-card2 border border-q-border rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-q-primary transition-colors"
-          />
+          <label for="profile-whatsapp" :class="LABEL">Nomor WhatsApp</label>
+          <input id="profile-whatsapp" v-model="form.whatsapp" type="tel" inputmode="tel" autocomplete="tel" placeholder="08xxxxxxxxxx" required :class="INPUT" :aria-invalid="waError ? 'true' : undefined" :aria-describedby="waError ? 'profile-wa-error' : undefined" />
+          <p v-if="waError" id="profile-wa-error" role="alert" class="mt-1 text-xs text-q-red">{{ waError }}</p>
         </div>
-
         <div>
-          <label class="block text-sm font-medium text-q-text-2 mb-1.5">
-            Email
-            <span class="text-q-text-3 font-normal ml-1">(tidak bisa diubah)</span>
-          </label>
-          <input
-            :value="authStore.customer?.email"
-            type="email"
-            disabled
-            class="w-full bg-q-card2/50 border border-q-border/50 rounded-xl px-4 py-3 text-q-text-3 text-sm cursor-not-allowed"
-          />
+          <p :class="LABEL">Email</p>
+          <p class="text-sm text-q-text-3">{{ authStore.customer?.email || '—' }}</p>
         </div>
+        <BaseButton type="submit" block :loading="savingProfile">Simpan perubahan</BaseButton>
+      </form>
+    </BaseCard>
 
-        <button
-          @click="handleSaveProfile"
-          :disabled="savingProfile"
-          class="w-full py-3 bg-q-primary hover:bg-q-primary-d text-white font-bold rounded-xl transition-colors disabled:opacity-50 shadow-purple-sm"
-        >
-          {{ savingProfile ? 'Menyimpan...' : 'Simpan Perubahan' }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Ganti Password -->
-    <div class="bg-q-card border border-q-border rounded-2xl p-6 mb-4">
-      <h2 class="text-base font-bold text-white mb-4">Ganti Password</h2>
-
-      <div class="space-y-3">
+    <BaseCard class="mb-4 p-5">
+      <h2 class="mb-4 font-display text-base font-semibold text-q-text">Ganti Password</h2>
+      <form aria-label="Ganti password" class="space-y-4" novalidate @submit.prevent="handleChangePassword">
         <div>
-          <label class="block text-sm font-medium text-q-text-2 mb-1.5">Password Lama</label>
-          <div class="relative">
-            <input
-              v-model="passForm.old_password"
-              :type="showOld ? 'text' : 'password'"
-              placeholder="Masukkan password lama"
-              class="w-full bg-q-card2 border border-q-border rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-q-primary transition-colors pr-11"
-            />
-            <button type="button" @click="showOld = !showOld"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-q-text-3 hover:text-q-text-2 transition-colors text-sm">
-              {{ showOld ? '🙈' : '👁️' }}
-            </button>
-          </div>
+          <label for="pass-old" :class="LABEL">Password lama</label>
+          <PasswordInput id="pass-old" v-model="passForm.old_password" autocomplete="current-password" />
         </div>
-
         <div>
-          <label class="block text-sm font-medium text-q-text-2 mb-1.5">Password Baru</label>
-          <div class="relative">
-            <input
-              v-model="passForm.new_password"
-              :type="showNew ? 'text' : 'password'"
-              placeholder="Minimal 8 karakter"
-              class="w-full bg-q-card2 border border-q-border rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-q-primary transition-colors pr-11"
-            />
-            <button type="button" @click="showNew = !showNew"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-q-text-3 hover:text-q-text-2 transition-colors text-sm">
-              {{ showNew ? '🙈' : '👁️' }}
-            </button>
-          </div>
+          <label for="pass-new" :class="LABEL">Password baru</label>
+          <PasswordInput id="pass-new" v-model="passForm.new_password" autocomplete="new-password" aria-describedby="pass-hint" />
+          <p id="pass-hint" class="mt-1 text-xs text-q-text-3">Minimal 8 karakter.</p>
         </div>
-
         <div>
-          <label class="block text-sm font-medium text-q-text-2 mb-1.5">Konfirmasi Password Baru</label>
-          <input
-            v-model="passForm.confirm_password"
-            :type="showNew ? 'text' : 'password'"
-            placeholder="Ulangi password baru"
-            class="w-full bg-q-card2 border border-q-border rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-q-primary transition-colors"
-          />
+          <label for="pass-confirm" :class="LABEL">Konfirmasi password baru</label>
+          <PasswordInput id="pass-confirm" v-model="passForm.confirm_password" autocomplete="new-password" />
         </div>
+        <p v-if="passError" role="alert" class="rounded-xl bg-q-red/10 px-3 py-2 text-sm text-q-red">{{ passError }}</p>
+        <BaseButton type="submit" variant="secondary" block :loading="savingPass">Ganti password</BaseButton>
+      </form>
+    </BaseCard>
 
-        <p v-if="passError" class="text-q-red text-sm bg-red-500/10 rounded-xl px-3 py-2">{{ passError }}</p>
-
-        <button
-          @click="handleChangePassword"
-          :disabled="savingPass"
-          class="w-full py-3 bg-q-card2 border border-q-border text-white font-semibold rounded-xl hover:border-q-primary transition-colors disabled:opacity-50 text-sm"
-        >
-          {{ savingPass ? 'Memproses...' : 'Ganti Password' }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Logout -->
-    <div class="bg-q-card border border-q-border rounded-2xl p-4">
-      <button
-        @click="handleLogout"
-        class="w-full py-3 text-q-red font-semibold text-sm hover:text-red-300 transition-colors flex items-center justify-center gap-2"
-      >
-        <span>🚪</span> Keluar dari Akun
-      </button>
-    </div>
-
+    <BaseButton variant="ghost" block class="!text-q-red" @click="handleLogout">
+      <LogOut class="size-4" aria-hidden="true" /> Keluar dari akun
+    </BaseButton>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Crown, LogOut } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/authStore'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseBadge from '@/components/ui/BaseBadge.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import PasswordInput from '@/components/ui/PasswordInput.vue'
 import { useToast } from '@/composables/useToast'
 import { updateCustomerProfile, changeCustomerPassword, customerLogout } from '@/api/authApi'
 
@@ -147,9 +81,12 @@ const toast     = useToast()
 
 const savingProfile = ref(false)
 const savingPass    = ref(false)
-const showOld       = ref(false)
-const showNew       = ref(false)
 const passError     = ref('')
+const nameError     = ref('')
+const waError       = ref('')
+
+const LABEL = 'mb-1.5 block text-sm font-medium text-q-text-2'
+const INPUT = 'w-full min-h-11 rounded-xl border border-border-subtle bg-surface-raised/60 px-4 py-2.5 text-sm text-q-text placeholder:text-q-text-3 transition-colors focus:outline-none focus:border-q-primary focus:ring-2 focus:ring-q-primary/30'
 
 const customerInitial = computed(() => authStore.customer?.name?.[0]?.toUpperCase() ?? '')
 
@@ -165,7 +102,10 @@ const passForm = reactive({
 })
 
 const handleSaveProfile = async () => {
-  if (!form.name.trim()) return
+  // Sama dengan validasi backend: nama min 2 karakter, WhatsApp wajib
+  nameError.value = form.name.trim().length >= 2 ? '' : 'Nama minimal 2 karakter'
+  waError.value   = form.whatsapp.trim() ? '' : 'Nomor WhatsApp wajib diisi'
+  if (nameError.value || waError.value) return
   savingProfile.value = true
   try {
     const { data } = await updateCustomerProfile(form)

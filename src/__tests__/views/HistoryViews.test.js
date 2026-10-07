@@ -11,6 +11,7 @@ import MyCreditsView from '@/views/MyCreditsView.vue'
 import MyFnbOrdersView from '@/views/MyFnbOrdersView.vue'
 
 const ok = (data) => ({ data: { data } })
+const page = (data, meta = { page: 1, total_page: 1 }) => ({ data: { data, meta } })
 const mountAt = async (component) => {
   const router = createRouter({ history: createMemoryHistory(), routes: ['/', '/booking', '/credits', '/fnb-order', '/my-bookings'].map((p) => ({ path: p, component: { template: '<div/>' } })) })
   await router.push('/'); await router.isReady()
@@ -22,7 +23,7 @@ const mountAt = async (component) => {
 const BOOKING = { id: 7, booking_code: 'BK-7', status: 'ongoing', booking_date: '2026-10-08', start_time: '14:00:00', end_time: '17:00:00', total_price: 68000, store: { name: 'Bekasi' }, room: { room_template: { name: 'VIP' } } }
 
 describe('MyBookingsView', () => {
-  beforeEach(() => { vi.clearAllMocks(); getMyBookings.mockResolvedValue(ok([BOOKING])) })
+  beforeEach(() => { vi.clearAllMocks(); getMyBookings.mockReset().mockResolvedValue(ok([BOOKING])) })
 
   it('lists bookings with a status badge and no nested scroll area', async () => {
     const w = await mountAt(MyBookingsView)
@@ -42,18 +43,44 @@ describe('MyBookingsView', () => {
     expect(q.get('room_info')).toBe('Bekasi — VIP')
   })
 
-  it('filters by status and ignores a slower response from an older filter', async () => {
-    let resolveOld
+  it('asks the server for page 1 of all statuses on open', async () => {
+    await mountAt(MyBookingsView)
+    expect(getMyBookings).toHaveBeenCalledWith({ page: 1, per_page: 20 })
+  })
+
+  it('a status filter is sent to the server and shows only what the server returns', async () => {
+    getMyBookings.mockImplementation(({ status }) =>
+      Promise.resolve(status === 'completed' ? page([{ ...BOOKING, id: 9, booking_code: 'BK-DONE', status: 'completed' }]) : page([BOOKING])))
     const w = await mountAt(MyBookingsView)
+    const filter = w.find('[role="group"][aria-label="Filter status"]')
+    expect(filter.text()).not.toContain('Hampir selesai')
+    await filter.findAll('button').find((b) => b.text() === 'Selesai').trigger('click'); await flushPromises()
+    expect(getMyBookings).toHaveBeenLastCalledWith({ page: 1, per_page: 20, status: 'completed' })
+    expect(w.text()).toContain('BK-DONE')
+    expect(w.text()).not.toContain('BK-7')
+  })
+
+  it('"Muat lagi" appends the next page and disappears on the last page', async () => {
+    getMyBookings
+      .mockResolvedValueOnce(page([BOOKING], { page: 1, total_page: 2 }))
+      .mockResolvedValueOnce(page([{ ...BOOKING, id: 8, booking_code: 'BK-8' }], { page: 2, total_page: 2 }))
+    const w = await mountAt(MyBookingsView)
+    await w.findAll('button').find((b) => b.text().includes('Muat lagi')).trigger('click'); await flushPromises()
+    expect(getMyBookings).toHaveBeenLastCalledWith({ page: 2, per_page: 20 })
+    expect(w.text()).toContain('BK-7')
+    expect(w.text()).toContain('BK-8')
+    expect(w.findAll('button').some((b) => b.text().includes('Muat lagi'))).toBe(false)
+  })
+
+  it('a slow response for an old filter does not overwrite the new filter', async () => {
+    let resolveOld
     getMyBookings
       .mockImplementationOnce(() => new Promise((r) => { resolveOld = r }))
-      .mockResolvedValueOnce(ok([{ ...BOOKING, id: 9, booking_code: 'BK-DONE', status: 'completed' }]))
-    const filter = w.find('[role="group"][aria-label="Filter status"]')
-    await filter.findAll('button').find((b) => b.text() === 'Sedang main').trigger('click')
-    await filter.findAll('button').find((b) => b.text() === 'Selesai').trigger('click')
+      .mockResolvedValueOnce(page([{ ...BOOKING, id: 9, booking_code: 'BK-DONE', status: 'completed' }]))
+    const w = await mountAt(MyBookingsView)
+    await w.find('[role="group"][aria-label="Filter status"]').findAll('button').find((b) => b.text() === 'Selesai').trigger('click')
     await flushPromises()
-    resolveOld(ok([BOOKING])); await flushPromises()
-    expect(getMyBookings).toHaveBeenLastCalledWith({ status: 'completed' })
+    resolveOld(page([BOOKING])); await flushPromises()
     expect(w.text()).toContain('BK-DONE')
     expect(w.text()).not.toContain('BK-7')
   })
@@ -111,4 +138,13 @@ describe('MyFnbOrdersView', () => {
     const w = await mountAt(MyFnbOrdersView)
     expect(w.text()).toContain('Belum ada pesanan')
   })
+
+describe('MyCreditsView null fields', () => {
+  it('no "undefined" in labels and no bar without total_hours', async () => {
+    getMyCredits.mockResolvedValue(ok([{ id: 1, package: { name: 'P' }, remaining_hours: 3 }]))
+    const w = await mountAt(MyCreditsView)
+    expect(w.html()).not.toContain('undefined')
+    expect(w.find('[role="progressbar"]').exists()).toBe(false)
+  })
+})
 })

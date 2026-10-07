@@ -2,7 +2,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
-import { getPublicStores, checkEventAvailability, initiateEventBooking } from '@/api/bookingApi'
+import { getPublicStores, getEventQuote, initiateEventBooking } from '@/api/bookingApi'
 import { redirectToInvoice, rememberPaymentExpiry, INVALID_PAYMENT_LINK } from '@/utils/payment'
 import { localISODate } from '@/utils/dates'
 
@@ -15,18 +15,10 @@ const toMinutes = (t) => {
   return h * 60 + m
 }
 
-// Rentang [mulai, selesai) dalam menit; selesai ≤ mulai berarti melewati tengah malam
-const toRange = (start, end) => {
-  const s = toMinutes(start)
-  let e   = toMinutes(end)
-  if (e <= s) e += DAY_MINUTES
-  return [s, e]
-}
-
 /**
  * Private event booking (sewa seluruh cabang): cabang → jadwal → detail → bayar.
- * Harga di sini ESTIMASI dari price_per_day — backend belum punya endpoint quote event;
- * angka final dari /customer/event-bookings/initiate.
+ * Harga dan ketersediaan dari GET /public/event-booking/quote. total_price = angka yang ditagih
+ * (dibulatkan ke Rp1.000 di server), jadi tidak dihitung ulang di sini.
  */
 export const useEventBooking = () => {
   const router    = useRouter()
@@ -34,7 +26,8 @@ export const useEventBooking = () => {
   const toast     = useToast()
 
   const stores       = ref([])
-  const pricePerDay  = ref(0)
+  const quote        = ref(null)
+  const quoteError   = ref('') // pesan 400 dari server (mis. harga cabang belum diatur)
   const availability = ref('idle') // idle | checking | available | conflict | error
   const initiating   = ref(false)
   const bookingError = ref('')
@@ -58,16 +51,14 @@ export const useEventBooking = () => {
   const sameTime      = computed(() => !!form.startTime && form.startTime === form.endTime)
   const durationHours = computed(() => {
     if (!form.startTime || !form.endTime || sameTime.value) return 0
-    const [s, e] = toRange(form.startTime, form.endTime)
-    return Math.round(((e - s) / 60) * 10) / 10
+    let mins = toMinutes(form.endTime) - toMinutes(form.startTime)
+    if (mins <= 0) mins += DAY_MINUTES // selesai ≤ mulai = melewati tengah malam
+    return Math.round((mins / 60) * 10) / 10
   })
 
-  // Dibulatkan ke ribuan, sama seperti perhitungan lama. null = tidak bisa diestimasi
-  const estimatedPrice = computed(() =>
-    availability.value === 'available' && pricePerDay.value > 0
-      ? Math.round((pricePerDay.value / 24) * durationHours.value / 1000) * 1000
-      : null,
-  )
+  // null = belum ada harga yang valid (belum dicek, bentrok, atau gagal) → tampil "—", bukan Rp 0
+  const totalPrice = computed(() =>
+    availability.value === 'available' ? quote.value?.total_price ?? null : null)
 
   const canPay = computed(() =>
     availability.value === 'available'
@@ -80,25 +71,35 @@ export const useEventBooking = () => {
   let checkSeq = 0
   const scheduleKey = () => `${form.storeId}|${form.date}|${form.startTime}|${form.endTime}`
   // flush 'sync': langsung saat jadwal berubah, sebelum pengecekan baru dimulai
-  watch(scheduleKey, () => { checkSeq++; availability.value = 'idle' }, { flush: 'sync' })
+  watch(scheduleKey, () => {
+    checkSeq++
+    availability.value = 'idle'
+    quote.value        = null
+    quoteError.value   = ''
+  }, { flush: 'sync' })
 
   const checkAvailability = async () => {
     if (!scheduleReady.value || durationHours.value <= 0) return
     const mySeq = ++checkSeq
     availability.value = 'checking'
+    quoteError.value   = ''
     try {
-      const { data } = await checkEventAvailability({ store_id: form.storeId, date: form.date })
-      if (mySeq !== checkSeq) return // ada pengecekan yang lebih baru / jadwal sudah berubah
-      pricePerDay.value = data.data?.event_price?.price_per_day || 0
-      const [start, end] = toRange(form.startTime, form.endTime)
-      const blocked = (data.data?.blocked_ranges || []).some((b) => {
-        const [bs, be] = toRange(b.start_time, b.end_time)
-        return start < be && end > bs
+      const { data } = await getEventQuote({
+        store_id:     form.storeId,
+        booking_date: form.date,
+        start_time:   form.startTime,
+        end_time:     form.endTime,
       })
-      availability.value = blocked ? 'conflict' : 'available'
-    } catch {
+      if (mySeq !== checkSeq) return // ada pengecekan yang lebih baru / jadwal sudah berubah
+      quote.value        = data.data ?? null
+      // Hanya available === true yang boleh lanjut bayar; respons tanpa field ini dianggap bentrok
+      availability.value = quote.value?.available === true ? 'available' : 'conflict'
+    } catch (e) {
       // Jangan menebak "tersedia" saat pengecekan gagal
-      if (mySeq === checkSeq) availability.value = 'error'
+      if (mySeq !== checkSeq) return
+      quote.value        = null
+      quoteError.value   = e?.response?.status === 400 ? e.response.data?.message || '' : ''
+      availability.value = 'error'
     }
   }
 
@@ -147,7 +148,7 @@ export const useEventBooking = () => {
 
   return {
     stores, form, today, selectedStore, scheduleReady, durationHours, sameTime,
-    pricePerDay, availability, estimatedPrice, canPay, initiating, bookingError,
+    quote, quoteError, availability, totalPrice, canPay, initiating, bookingError,
     checkAvailability, handleBookEvent, init,
   }
 }

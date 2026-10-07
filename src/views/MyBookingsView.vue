@@ -52,6 +52,18 @@
         </BaseCard>
       </li>
     </ul>
+
+    <p v-if="loadMoreError" role="alert" class="mt-3 text-center text-sm text-q-red">Gagal memuat booking berikutnya.</p>
+    <BaseButton
+      v-if="!loading && hasMore"
+      variant="secondary"
+      block
+      class="mt-3"
+      :loading="loadingMore"
+      @click="loadMore"
+    >
+      Muat lagi
+    </BaseButton>
   </div>
 </template>
 
@@ -68,27 +80,47 @@ import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import BaseSegmented from '@/components/ui/BaseSegmented.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 
+// Filter dan pagination di server: GET /customer/bookings?page&per_page&status
 const FILTERS = [
-  { label: 'Semua',          value: 'all' },
-  { label: 'Akan datang',    value: 'upcoming' },
-  { label: 'Sedang main',    value: 'ongoing' },
-  { label: 'Hampir selesai', value: 'ending_soon' },
-  { label: 'Selesai',        value: 'completed' },
-  { label: 'Dibatalkan',     value: 'cancelled' },
+  { label: 'Semua',       value: 'all' },
+  { label: 'Akan datang', value: 'upcoming' },
+  { label: 'Sedang main', value: 'ongoing' },
+  { label: 'Selesai',     value: 'completed' },
+  { label: 'Dibatalkan',  value: 'cancelled' },
 ]
+const PER_PAGE = 20
 
-const bookings = ref([])
-const loading  = ref(true)
-const status   = ref('all')
+const bookings      = ref([])
+const loading       = ref(true)
+const loadingMore   = ref(false)
+const loadMoreError = ref(false)
+const status        = ref('all')
+const page          = ref(1)
+const hasMore       = ref(false)
 
-let seq = 0 // ganti filter cepat-cepat: response filter lama yang telat datang diabaikan
+// Ganti filter saat request lama masih jalan → respons lama dibuang
+let seq = 0
+
+const fetchPage = async (nextPage) => {
+  const mySeq  = seq
+  const params = { page: nextPage, per_page: PER_PAGE }
+  if (status.value !== 'all') params.status = status.value
+  const { data } = await getMyBookings(params)
+  if (mySeq !== seq) return null
+  page.value    = nextPage
+  hasMore.value = (data.meta?.page ?? nextPage) < (data.meta?.total_page ?? 0)
+  return data.data || []
+}
 
 const fetchBookings = async () => {
-  const mySeq = ++seq
-  loading.value = true
+  seq++
+  const mySeq = seq
+  loading.value       = true
+  loadMoreError.value = false
+  hasMore.value       = false
   try {
-    const { data } = await getMyBookings(status.value === 'all' ? {} : { status: status.value })
-    if (mySeq === seq) bookings.value = data.data || []
+    const rows = await fetchPage(1)
+    if (rows) bookings.value = rows
   } catch {
     if (mySeq === seq) bookings.value = []
   } finally {
@@ -96,11 +128,26 @@ const fetchBookings = async () => {
   }
 }
 
+const loadMore = async () => {
+  const mySeq = seq
+  loadingMore.value   = true
+  loadMoreError.value = false
+  try {
+    const rows = await fetchPage(page.value + 1)
+    if (rows) bookings.value = [...bookings.value, ...rows]
+  } catch {
+    if (mySeq === seq) loadMoreError.value = true
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+watch(status, fetchBookings)
+
 const fnbLink = (b) => ({
   path:  '/fnb-order',
   query: { booking_id: b.id, room_info: `${b.store?.name || ''} — ${b.room?.room_template?.name || ''}` },
 })
 
-watch(status, fetchBookings)
 onMounted(fetchBookings)
 </script>

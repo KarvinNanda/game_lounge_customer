@@ -27,7 +27,7 @@
             <p class="truncate text-sm font-semibold text-q-text">{{ v.name }}</p>
             <p class="text-xs text-q-text-3">
               <template v-if="v.min_purchase > 0">min {{ formatRp(v.min_purchase) }} · </template>
-              <span :class="EXPIRY_TONE[expiry(v).state]">{{ expiry(v).state === 'ok' ? `s/d ${formatDateShort(v.valid_until)}` : expiry(v).label }}</span>
+              <span :class="EXPIRY_TONE[expiry(v).state]">{{ expiry(v).state === 'ok' ? `s/d ${formatDateShort(v.end_date?.slice(0, 10))}` : expiry(v).label }}</span>
             </p>
             <div class="mt-2 flex items-center gap-2">
               <code class="rounded-md bg-white/5 px-2 py-1 font-mono text-xs tracking-wider text-q-text">{{ v.code }}</code>
@@ -55,7 +55,7 @@ import { TicketPercent, Crown, Copy } from 'lucide-vue-next'
 import { getMyVouchers } from '@/api/authApi'
 import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
-import { expiryState } from '@/utils/dates'
+import { dateOnlyExpiryState } from '@/utils/dates'
 import { formatRp, formatDateShort } from '@/utils/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -70,7 +70,8 @@ const toast     = useToast()
 const vouchers  = ref([])
 const loading   = ref(true)
 
-const expiry        = (v) => expiryState(v.valid_until)
+// end_date = kolom DATE di backend, berlaku sampai akhir hari itu
+const expiry        = (v) => dateOnlyExpiryState(v.end_date)
 const discountLabel = (v) => (v.discount_type === 'percentage' ? `${v.discount_value}% off` : `Hemat ${formatRp(v.discount_value)}`)
 
 const copy = async (code) => {

@@ -13,7 +13,7 @@
         <img
           v-if="imageUrl && !imageFailed"
           :src="getImgUrl(imageUrl)"
-          :alt="banner.title"
+          alt=""
           class="w-full object-cover"
           @error="imageFailed = true"
         />

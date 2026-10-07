@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { localISODate, parseLocalDate, addHour, expiryState } from '@/utils/dates'
+import { localISODate, parseLocalDate, addHour, expiryState, dateOnlyExpiryState } from '@/utils/dates'
 
 afterEach(() => { vi.useRealTimers() })
 
@@ -55,5 +55,24 @@ describe('expiryState', () => {
   })
   it('missing date never expires', () => {
     expect(expiryState(null, now)).toEqual({ state: 'none', days: null, label: 'Tanpa batas' })
+  })
+})
+
+describe('dateOnlyExpiryState (DATE columns like voucher end_date: valid through that whole day)', () => {
+  const now = new Date(2026, 9, 8, 15, 0)
+  it('the last valid day is "Hari ini", not expired', () => {
+    expect(dateOnlyExpiryState('2026-10-08', now)).toEqual({ state: 'soon', days: 0, label: 'Hari ini' })
+  })
+  it('a midnight timestamp of the same day is also still valid (backend serializes DATE that way)', () => {
+    expect(dateOnlyExpiryState('2026-10-08T00:00:00+07:00', now).state).toBe('soon')
+  })
+  it('yesterday is expired', () => {
+    expect(dateOnlyExpiryState('2026-10-07', now).state).toBe('expired')
+  })
+})
+
+describe('expiryState guards', () => {
+  it('an invalid date is not "NaN hari lagi"', () => {
+    expect(expiryState('bukan-tanggal').state).toBe('none')
   })
 })

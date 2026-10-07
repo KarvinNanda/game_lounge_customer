@@ -12,7 +12,7 @@
     />
     <button
       type="button"
-      :aria-label="visible ? 'Sembunyikan password' : 'Tampilkan password'"
+      aria-label="Tampilkan password"
       :aria-pressed="visible"
       class="absolute right-0 top-0 size-11 flex items-center justify-center rounded-xl text-q-text-3 hover:text-q-text-2 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-focus-ring"
       @click="visible = !visible"

@@ -32,9 +32,23 @@ const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
  */
 export const expiryState = (expiresAt, now = new Date()) => {
   if (!expiresAt) return { state: 'none', days: null, label: 'Tanpa batas' }
-  const end = parseLocalDate(expiresAt) ?? new Date(expiresAt)
+  const end = expiresAt instanceof Date ? expiresAt : parseLocalDate(expiresAt) ?? new Date(expiresAt)
+  if (Number.isNaN(end.getTime())) return { state: 'none', days: null, label: 'Tanpa batas' }
   if (end < now) return { state: 'expired', days: 0, label: 'Kedaluwarsa' }
   const days = Math.round((startOfDay(end) - startOfDay(now)) / 86_400_000)
   if (days > SOON_DAYS) return { state: 'ok', days, label: `${days} hari lagi` }
   return { state: 'soon', days, label: days === 0 ? 'Hari ini' : `${days} hari lagi` }
+}
+
+/**
+ * Untuk kolom DATE (mis. voucher end_date): berlaku sampai akhir hari itu (inklusif),
+ * sama seperti backend (end_date >= hari ini). Hanya bagian YYYY-MM-DD yang dipakai,
+ * karena backend bisa mengirim DATE sebagai "YYYY-MM-DDT00:00:00+07:00".
+ */
+export const dateOnlyExpiryState = (endDate, now = new Date()) => {
+  if (!endDate) return expiryState(null, now)
+  const day = parseLocalDate(String(endDate).slice(0, 10))
+  if (!day) return expiryState(null, now)
+  const endOfDay = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999)
+  return expiryState(endOfDay, now)
 }

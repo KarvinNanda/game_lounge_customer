@@ -7,11 +7,12 @@ import { useAuthStore } from '@/stores/authStore'
 const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }
 vi.mock('@/composables/useToast', () => ({ useToast: () => toast }))
 vi.mock('@/api/authApi', () => ({ getCustomerMe: vi.fn() }))
-vi.mock('@/api/bookingApi', () => ({ getPublicStores: vi.fn(), checkEventAvailability: vi.fn(), initiateEventBooking: vi.fn() }))
+vi.mock('@/api/bookingApi', () => ({ getPublicStores: vi.fn(), getEventQuote: vi.fn(), initiateEventBooking: vi.fn() }))
 import * as api from '@/api/bookingApi'
 import EventBookingView from '@/views/EventBookingView.vue'
 
 const ok = (data) => ({ data: { data } })
+const quote = (available = true) => ok({ duration_hours: 4, price_per_day: 2400000, total_price: 401000, available })
 
 const mountView = async () => {
   const pinia = createPinia(); setActivePinia(pinia)
@@ -35,10 +36,10 @@ describe('EventBookingView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     api.getPublicStores.mockResolvedValue(ok([{ id: 's1', name: 'Bekasi' }]))
-    api.checkEventAvailability.mockResolvedValue(ok({ blocked_ranges: null, event_price: { price_per_day: 2400000 } }))
+    api.getEventQuote.mockResolvedValue(quote())
   })
 
-  it('branch → schedule → details → payment, with the price labelled as an estimate', async () => {
+  it('branch → schedule → details → payment, showing the server total as the final price', async () => {
     const w = await mountView()
     await toSchedule(w)
     await btn(w, 'Cek ketersediaan').trigger('click'); await flushPromises()
@@ -47,12 +48,12 @@ describe('EventBookingView', () => {
     await w.find('#event-name').setValue('Ultah Budi')
     await btn(w, 'Lanjut').trigger('click')
     expect(steps(w)[3].attributes('data-open')).toBe('true')
-    expect(w.text()).toContain('Estimasi')
-    expect(w.find('[data-pay-bar]').text()).toContain('Rp 400.000')
+    expect(w.text()).not.toContain('Estimasi')
+    expect(w.find('[data-pay-bar]').text()).toContain('Rp 401.000')
   })
 
   it('shows a conflict inside the schedule step and does not advance', async () => {
-    api.checkEventAvailability.mockResolvedValue(ok({ blocked_ranges: [{ start_time: '15:00', end_time: '16:00' }], event_price: { price_per_day: 2400000 } }))
+    api.getEventQuote.mockResolvedValue(quote(false))
     const w = await mountView()
     await toSchedule(w)
     await btn(w, 'Cek ketersediaan').trigger('click'); await flushPromises()
@@ -61,12 +62,29 @@ describe('EventBookingView', () => {
   })
 
   it('offers a retry when the availability check fails', async () => {
-    api.checkEventAvailability.mockRejectedValueOnce(new Error('timeout'))
+    api.getEventQuote.mockRejectedValueOnce(new Error('timeout'))
     const w = await mountView()
     await toSchedule(w)
     await btn(w, 'Cek ketersediaan').trigger('click'); await flushPromises()
     await btn(w, 'Coba lagi').trigger('click'); await flushPromises()
     expect(steps(w)[2].attributes('data-open')).toBe('true')
+  })
+
+  it('shows the server message when the quote is rejected (400)', async () => {
+    api.getEventQuote.mockRejectedValueOnce({ response: { status: 400, data: { message: 'harga event untuk cabang ini belum dikonfigurasi' } } })
+    const w = await mountView()
+    await toSchedule(w)
+    await btn(w, 'Cek ketersediaan').trigger('click'); await flushPromises()
+    expect(steps(w)[1].find('[role="alert"]').text()).toContain('harga event untuk cabang ini belum dikonfigurasi')
+  })
+
+  it('no longer warns that only the start date is checked for overnight events', async () => {
+    const w = await mountView()
+    await toSchedule(w)
+    await w.find('#event-start').setValue('22:00')
+    await w.find('#event-end').setValue('02:00')
+    expect(w.text()).toContain('melewati tengah malam')
+    expect(w.text()).not.toContain('dicek untuk tanggal mulai')
   })
 
   it('has labelled inputs and one h1', async () => {

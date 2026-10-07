@@ -16,8 +16,11 @@ export const getAvailability          = (params)  => publicApi.get('/public/book
 export const initiateBooking          = (payload) => api.post('/customer/bookings/initiate', payload)
 export const getMyBookings            = (params)  => api.get('/customer/bookings', { params })
 export const getMyBookingById         = (id)      => api.get(`/customer/bookings/${id}`)
+// Status pembayaran setelah redirect Xendit: pending | confirmed | expired; 404 = tidak ditemukan / bukan milik kita
+export const getBookingByHold         = (holdId)  => api.get(`/customer/bookings/by-hold/${encodeURIComponent(holdId)}`)
 
 export const getMyVouchersForBooking  = (params)  => api.get('/customer/vouchers/available', { params })
-export const checkEventAvailability   = (params)  => api.get('/public/event-booking/availability', { params })
+// Harga + ketersediaan event (termasuk event lewat tengah malam) — logika sama dengan /customer/event-bookings/initiate
+export const getEventQuote            = (params)  => publicApi.get('/public/event-booking/quote', { params })
 export const initiateEventBooking     = (payload) => api.post('/customer/event-bookings/initiate', payload)
 export const mockConfirmEvent         = (eventId) => api.post(`/customer/event-bookings/${eventId}/mock-confirm`)

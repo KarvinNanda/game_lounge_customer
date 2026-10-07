@@ -50,8 +50,9 @@ describe('PromoView', () => {
 
   it('members see vouchers with discount, code, expiry and a booking CTA', async () => {
     getMyVouchers.mockResolvedValue(ok([
-      { voucher_id: 'v1', name: 'Hemat 10%', code: 'HEMAT10', discount_type: 'percentage', discount_value: 10, min_purchase: 50000, valid_until: '2026-10-11T23:59:00+07:00' },
-      { voucher_id: 'v2', name: 'Lama', code: 'OLD', discount_type: 'fixed', discount_value: 5000, valid_until: '2026-10-01T00:00:00+07:00' },
+      { voucher_id: 'v1', name: 'Hemat 10%', code: 'HEMAT10', discount_type: 'percentage', discount_value: 10, min_purchase: 50000, end_date: '2026-10-11' },
+      { voucher_id: 'v2', name: 'Lama', code: 'OLD', discount_type: 'fixed', discount_value: 5000, end_date: '2026-10-01' },
+      { voucher_id: 'v3', name: 'Hari Terakhir', code: 'LAST', discount_type: 'fixed', discount_value: 1000, end_date: '2026-10-08' },
     ]))
     const w = await mountAt(PromoView, '/promo')
     expect(w.text()).toContain('10% off')
@@ -59,6 +60,8 @@ describe('PromoView', () => {
     expect(w.text()).toContain('min Rp 50.000')
     expect(w.text()).toContain('3 hari lagi')
     expect(w.text()).toContain('Kedaluwarsa')
+    expect(w.text()).toContain('Hari ini') // hari terakhir masih berlaku
+    expect(w.text()).not.toContain('Tanpa batas')
     expect(w.text()).not.toMatch(/-\d+ ?h/)
     expect(w.find('a[href="/booking"]').exists()).toBe(true)
   })
@@ -181,4 +184,64 @@ describe('ResetPasswordView', () => {
     expect(publicApi.post).toHaveBeenCalledWith('/customer/reset-password/tok', { new_password: 'passwordbaru1', confirm_password: 'passwordbaru1' })
     expect(w.find('a[href="/login"]').exists()).toBe(true)
   })
+
+describe('2c review fixes', () => {
+  beforeEach(() => { vi.clearAllMocks(); publicApi.get.mockResolvedValue({}) })
+
+  it('wrong old password (400) shows the server message, with no special 401 handling', async () => {
+    changeCustomerPassword.mockRejectedValue({ response: { status: 400, data: { message: 'Password lama tidak sesuai' } } })
+    const w = await mountAt(ProfileView)
+    await w.find('#pass-old').setValue('salah1234')
+    await w.find('#pass-new').setValue('passwordbaru1')
+    await w.find('#pass-confirm').setValue('passwordbaru1')
+    await w.find('form[aria-label="Ganti password"]').trigger('submit'); await flushPromises()
+    // Tanpa config kedua: 401 di endpoint ini sekarang berarti sesi habis, jadi interceptor global yang menangani
+    expect(changeCustomerPassword.mock.calls[0]).toHaveLength(1)
+    expect(w.find('[role="alert"]').text()).toContain('Password lama tidak sesuai')
+  })
+
+  it('rate limit (429) shows the server message', async () => {
+    changeCustomerPassword.mockRejectedValue({ response: { status: 429, data: { message: 'Terlalu banyak percobaan. Silakan coba lagi beberapa saat lagi.' } } })
+    const w = await mountAt(ProfileView)
+    await w.find('#pass-old').setValue('salah1234')
+    await w.find('#pass-new').setValue('passwordbaru1')
+    await w.find('#pass-confirm').setValue('passwordbaru1')
+    await w.find('form[aria-label="Ganti password"]').trigger('submit'); await flushPromises()
+    expect(w.find('[role="alert"]').text()).toContain('Terlalu banyak percobaan')
+  })
+
+  it('profile validates name (min 2) and WhatsApp (required) like the backend', async () => {
+    const w = await mountAt(ProfileView, '/', { name: 'A', type: 'member' })
+    await w.find('#profile-name').setValue('A')
+    await w.find('#profile-whatsapp').setValue('')
+    await w.find('form[aria-label="Data diri"]').trigger('submit'); await flushPromises()
+    const alerts = w.findAll('[role="alert"]').map((a) => a.text()).join(' ')
+    expect(alerts).toContain('minimal 2')
+    expect(alerts).toContain('WhatsApp wajib')
+  })
+
+  it('aria-describedby on the name field only when there is an error', async () => {
+    const w = await mountAt(ProfileView)
+    expect(w.find('#profile-name').attributes('aria-describedby')).toBeUndefined()
+  })
+
+  it('forgot password: user can resend or change the email after submitting', async () => {
+    publicApi.post.mockResolvedValue({})
+    const w = await mountAt(ForgotPasswordView, '/forgot-password', null)
+    await w.find('#forgot-email').setValue('a@b.com')
+    await w.find('form').trigger('submit'); await flushPromises()
+    await w.findAll('button').find((b) => b.text().includes('Kirim ulang')).trigger('click')
+    expect(w.find('#forgot-email').exists()).toBe(true)
+  })
+
+  it('reset: a token that expires while filling the form switches to the invalid state', async () => {
+    publicApi.post.mockRejectedValue({ response: { status: 400, data: { message: 'Token tidak valid' } } })
+    const w = await mountAt(ResetPasswordView, '/reset-password/tok', null)
+    await w.find('#reset-new').setValue('passwordbaru1')
+    await w.find('#reset-confirm').setValue('passwordbaru1')
+    await w.find('form').trigger('submit'); await flushPromises()
+    expect(w.find('a[href="/forgot-password"]').exists()).toBe(true)
+    expect(w.find('h1').text()).toContain('Link tidak valid')
+  })
+})
 })

@@ -39,14 +39,14 @@
           </div>
           <p v-if="sameTime" role="alert" class="text-xs text-q-red">Jam selesai harus berbeda dengan jam mulai.</p>
           <p v-else-if="durationHours > 0" class="text-xs text-q-text-3">
-            Durasi {{ durationHours }} jam<template v-if="form.endTime < form.startTime"> (melewati tengah malam; ketersediaan dicek untuk tanggal mulai)</template>
+            Durasi {{ durationHours }} jam<template v-if="form.endTime < form.startTime"> (melewati tengah malam)</template>
           </p>
 
           <p v-if="availability === 'conflict'" role="alert" class="flex gap-2 rounded-xl bg-q-red/10 p-3 text-sm text-q-red">
             <CalendarX class="size-4 shrink-0" aria-hidden="true" /> Jam ini sudah dipakai booking atau event lain. Pilih jam lain.
           </p>
           <p v-else-if="availability === 'error'" role="alert" class="flex items-center justify-between gap-3 rounded-xl bg-q-red/10 p-3 text-sm text-q-red">
-            Gagal mengecek ketersediaan.
+            {{ quoteError || 'Gagal mengecek ketersediaan.' }}
             <button type="button" class="min-h-11 shrink-0 font-semibold text-q-text underline cursor-pointer" @click="checkAvailability">Coba lagi</button>
           </p>
 
@@ -79,11 +79,10 @@
               <dd class="text-right text-q-text">{{ row.value }}</dd>
             </div>
             <div class="flex justify-between gap-4 border-t border-border-subtle pt-2">
-              <dt class="text-q-text-2">Estimasi total</dt>
-              <dd class="font-display text-lg font-semibold text-q-primary-l tabular-nums">{{ estimatedPrice === null ? '—' : formatRp(estimatedPrice) }}</dd>
+              <dt class="text-q-text-2">Total</dt>
+              <dd class="font-display text-lg font-semibold text-q-primary-l tabular-nums">{{ totalPrice === null ? '—' : formatRp(totalPrice) }}</dd>
             </div>
           </dl>
-          <p class="text-xs text-q-text-3">Harga final dihitung saat checkout.</p>
 
           <div>
             <p class="mb-2 text-xs font-medium text-q-text-2">Metode pembayaran</p>
@@ -110,8 +109,8 @@
     >
       <div class="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
         <div class="min-w-0 flex-1">
-          <p class="text-xs text-q-text-3">Estimasi total</p>
-          <p class="font-display text-lg font-semibold text-q-text tabular-nums">{{ estimatedPrice === null ? '—' : formatRp(estimatedPrice) }}</p>
+          <p class="text-xs text-q-text-3">Total</p>
+          <p class="font-display text-lg font-semibold text-q-text tabular-nums">{{ totalPrice === null ? '—' : formatRp(totalPrice) }}</p>
         </div>
         <BaseButton size="lg" :disabled="!canPay" :loading="initiating" @click="handleBookEvent">
           {{ initiating ? 'Memproses...' : 'Bayar Sekarang' }}
@@ -137,7 +136,7 @@ const INPUT = 'w-full min-h-11 rounded-xl border border-border-subtle bg-surface
 
 const {
   stores, form, today, selectedStore, scheduleReady, durationHours, sameTime,
-  availability, estimatedPrice, canPay, initiating, bookingError,
+  availability, quoteError, totalPrice, canPay, initiating, bookingError,
   checkAvailability, handleBookEvent, init,
 } = useEventBooking()
 

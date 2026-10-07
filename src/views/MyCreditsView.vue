@@ -29,17 +29,18 @@
           </div>
 
           <div
+            v-if="cr.total_hours"
             role="progressbar"
-            :aria-valuenow="cr.used_hours"
+            :aria-valuenow="cr.used_hours ?? 0"
             aria-valuemin="0"
             :aria-valuemax="cr.total_hours"
-            :aria-label="`${cr.used_hours} dari ${cr.total_hours} jam terpakai`"
+            :aria-label="`${cr.used_hours ?? 0} dari ${cr.total_hours} jam terpakai`"
             class="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"
           >
             <div class="h-full rounded-full bg-q-primary" :style="{ width: `${usedPercent(cr)}%` }" />
           </div>
           <div class="mt-1.5 flex justify-between text-xs">
-            <span class="text-q-text-3">{{ cr.used_hours }}/{{ cr.total_hours }} jam terpakai</span>
+            <span class="text-q-text-3"><template v-if="cr.total_hours">{{ cr.used_hours ?? 0 }}/{{ cr.total_hours }} jam terpakai</template></span>
             <span :class="EXPIRY_TONE[expiry(cr).state]">
               <template v-if="expiry(cr).state === 'ok'">Berlaku s/d {{ formatDateShort(cr.expires_at) }}</template>
               <template v-else>{{ expiry(cr).label }}</template>
