@@ -149,4 +149,13 @@ describe('useEventBooking', () => {
     resolveNew(quote()); await second
     expect(e.availability.value).toBe('available')
   })
+
+  it('cannot pay while the total is unknown, even if the slot is available', async () => {
+    api.getEventQuote.mockResolvedValue(ok({ available: true, total_price: null }))
+    const e = await setup(); schedule(e)
+    Object.assign(e.form, { eventName: 'Ultah', paymentMethod: 'qris' })
+    await e.checkAvailability()
+    expect(e.totalPrice.value).toBeNull()
+    expect(e.canPay.value).toBe(false)
+  })
 })

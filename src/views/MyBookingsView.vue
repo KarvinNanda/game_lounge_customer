@@ -116,6 +116,7 @@ const fetchBookings = async () => {
   seq++
   const mySeq = seq
   loading.value       = true
+  loadingMore.value   = false // "Muat lagi" milik filter lama tidak boleh mengunci tombol filter baru
   loadMoreError.value = false
   hasMore.value       = false
   try {
@@ -129,6 +130,7 @@ const fetchBookings = async () => {
 }
 
 const loadMore = async () => {
+  if (loadingMore.value) return // dua klik sebelum tombol sempat disabled
   const mySeq = seq
   loadingMore.value   = true
   loadMoreError.value = false
@@ -138,7 +140,7 @@ const loadMore = async () => {
   } catch {
     if (mySeq === seq) loadMoreError.value = true
   } finally {
-    loadingMore.value = false
+    if (mySeq === seq) loadingMore.value = false
   }
 }
 

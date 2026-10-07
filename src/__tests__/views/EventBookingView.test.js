@@ -76,6 +76,7 @@ describe('EventBookingView', () => {
     await toSchedule(w)
     await btn(w, 'Cek ketersediaan').trigger('click'); await flushPromises()
     expect(steps(w)[1].find('[role="alert"]').text()).toContain('harga event untuk cabang ini belum dikonfigurasi')
+    expect(btn(w, 'Coba lagi')).toBeUndefined() // mengulang request yang sama pasti ditolak lagi
   })
 
   it('no longer warns that only the start date is checked for overnight events', async () => {

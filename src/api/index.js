@@ -24,7 +24,10 @@ api.interceptors.response.use(
       // Hindari redirect loop kalau sudah di halaman login
       const currentPath = window.location?.pathname || ''
       if (!currentPath.startsWith('/login')) {
-        window.location.href = '/login'
+        // Simpan halaman asal (mis. /payment/success?hold_id=…) supaya setelah login user kembali ke sana.
+        // LoginView memfilter nilai ini dengan sanitizeRedirect.
+        const from = currentPath + (window.location?.search || '')
+        window.location.href = from ? `/login?redirect=${encodeURIComponent(from)}` : '/login'
       }
     }
     return Promise.reject(error)

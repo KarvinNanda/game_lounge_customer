@@ -26,9 +26,6 @@
         <span class="mt-0.5 flex items-center gap-1 text-xs text-q-text-3">
           <Users class="size-3" aria-hidden="true" /> {{ formatCapacity(room.capacity_min, room.capacity_max) }}
         </span>
-        <span v-if="room.facilities?.length" class="mt-1 flex flex-wrap gap-1">
-          <span v-for="f in room.facilities.slice(0, 3)" :key="facilityName(f)" data-facility class="rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-q-text-2">{{ facilityName(f) }}</span>
-        </span>
       </span>
       <span class="shrink-0 text-right">
         <span class="block text-xs text-q-text-3">mulai</span>
@@ -43,7 +40,7 @@
 import { Gamepad2, Users } from 'lucide-vue-next'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
 import { getImgUrl } from '@/utils/security'
-import { formatRp, formatCapacity, facilityName } from '@/utils/format'
+import { formatRp, formatCapacity } from '@/utils/format'
 import { onRadioKeydownManual, radioTabindex } from '@/utils/radioKeys'
 
 defineProps({

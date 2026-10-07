@@ -64,7 +64,7 @@ describe('useHoldConfirmation', () => {
     expect(c.state.value).toBe('unknown')
   })
 
-  it.each([404, 429])('%i stops polling at once', async (status) => {
+  it.each([401, 404, 429])('%i stops polling at once', async (status) => {
     getBookingByHold.mockRejectedValue(fail(status))
     const { c } = await setup()
     await tick(10000)
@@ -93,5 +93,16 @@ describe('useHoldConfirmation', () => {
     w.unmount()
     await tick(30000)
     expect(getBookingByHold).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaving the page while a request is in flight ignores its answer and polls no more', async () => {
+    let resolve
+    getBookingByHold.mockImplementationOnce(() => new Promise((r) => { resolve = r }))
+    const { c, w } = await setup()
+    w.unmount()
+    resolve(res({ status: 'pending' })); await flushPromises()
+    await tick(30000)
+    expect(getBookingByHold).toHaveBeenCalledTimes(1)
+    expect(c.state.value).toBe('checking')
   })
 })

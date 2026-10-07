@@ -62,6 +62,7 @@ export const useEventBooking = () => {
 
   const canPay = computed(() =>
     availability.value === 'available'
+    && totalPrice.value !== null // jangan bayar tanpa melihat angka yang ditagih
     && !!form.eventName.trim()
     && !!form.paymentMethod
     && !initiating.value,

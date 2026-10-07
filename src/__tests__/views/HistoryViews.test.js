@@ -72,6 +72,31 @@ describe('MyBookingsView', () => {
     expect(w.findAll('button').some((b) => b.text().includes('Muat lagi'))).toBe(false)
   })
 
+  it('switching filter while "Muat lagi" is loading leaves the new filter\'s button usable', async () => {
+    getMyBookings
+      .mockResolvedValueOnce(page([BOOKING], { page: 1, total_page: 2 }))
+      .mockImplementationOnce(() => new Promise(() => {}))                       // halaman 2 "Semua" menggantung
+      .mockResolvedValueOnce(page([{ ...BOOKING, id: 9, booking_code: 'BK-DONE', status: 'completed' }], { page: 1, total_page: 2 }))
+    const w = await mountAt(MyBookingsView)
+    await w.findAll('button').find((b) => b.text().includes('Muat lagi')).trigger('click')
+    await w.find('[role="group"][aria-label="Filter status"]').findAll('button').find((b) => b.text() === 'Selesai').trigger('click')
+    await flushPromises()
+    const more = w.findAll('button').find((b) => b.text().includes('Muat lagi'))
+    expect(more.attributes('disabled')).toBeUndefined()
+  })
+
+  it('a double click on "Muat lagi" requests the next page only once', async () => {
+    getMyBookings
+      .mockResolvedValueOnce(page([BOOKING], { page: 1, total_page: 3 }))
+      .mockResolvedValue(page([{ ...BOOKING, id: 8, booking_code: 'BK-8' }], { page: 2, total_page: 3 }))
+    const w = await mountAt(MyBookingsView)
+    const more = w.findAll('button').find((b) => b.text().includes('Muat lagi'))
+    more.element.click(); more.element.click() // dua klik di tick yang sama, sebelum re-render
+    await flushPromises()
+    expect(getMyBookings).toHaveBeenCalledTimes(2)
+    expect(w.findAll('li').length).toBe(2)
+  })
+
   it('a slow response for an old filter does not overwrite the new filter', async () => {
     let resolveOld
     getMyBookings

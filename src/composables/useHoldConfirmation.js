@@ -39,9 +39,10 @@ export const useHoldConfirmation = (holdId) => {
       }
     } catch (e) {
       if (stopped) return
-      // 404: tidak ada / bukan milik kita / sudah dibersihkan. 429: kena rate limit. Mengulang tidak membantu.
+      // 401: sesi habis (interceptor sudah mengarahkan ke login). 404: tidak ada / bukan milik kita /
+      // sudah dibersihkan. 429: kena rate limit. Mengulang tidak membantu.
       const status = e?.response?.status
-      if (status === 404 || status === 429) { giveUp(); return }
+      if (status === 401 || status === 404 || status === 429) { giveUp(); return }
       // Error jaringan / 5xx: coba lagi di putaran berikutnya
     }
     if (requests >= MAX_REQUESTS) { giveUp(); return }

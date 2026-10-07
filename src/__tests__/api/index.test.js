@@ -91,4 +91,13 @@ describe('api/index', () => {
     expect(localStorage.getItem('customer_data')).toBeNull()
     expect(window.location.href).toBe('/login')
   })
+
+  it('a 401 keeps the current page as ?redirect so login can return to it', async () => {
+    window.location.pathname = '/payment/success'
+    window.location.search   = '?hold_id=3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b'
+    const handler = api.interceptors.response.handlers.find(Boolean)
+    await expect(handler.rejected({ response: { status: 401 } })).rejects.toBeTruthy()
+    expect(window.location.href).toBe('/login?redirect=' + encodeURIComponent('/payment/success?hold_id=3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b'))
+    delete window.location.pathname; delete window.location.search
+  })
 })

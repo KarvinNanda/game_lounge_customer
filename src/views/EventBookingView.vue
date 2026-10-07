@@ -47,7 +47,7 @@
           </p>
           <p v-else-if="availability === 'error'" role="alert" class="flex items-center justify-between gap-3 rounded-xl bg-q-red/10 p-3 text-sm text-q-red">
             {{ quoteError || 'Gagal mengecek ketersediaan.' }}
-            <button type="button" class="min-h-11 shrink-0 font-semibold text-q-text underline cursor-pointer" @click="checkAvailability">Coba lagi</button>
+            <button v-if="!quoteError" type="button" class="min-h-11 shrink-0 font-semibold text-q-text underline cursor-pointer" @click="checkAvailability">Coba lagi</button>
           </p>
 
           <BaseButton block :disabled="!scheduleReady || durationHours <= 0" :loading="availability === 'checking'" @click="checkAvailability">
