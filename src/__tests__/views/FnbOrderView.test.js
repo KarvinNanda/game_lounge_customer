@@ -86,6 +86,23 @@ describe('FnbOrderView', () => {
     expect(w.find('[data-cart-bar]').text()).toContain('1 item')
   })
 
+  it('desktop: the cart is a sticky side panel (no cart bar, no sheet) and still submits', async () => {
+    const original = window.matchMedia
+    window.matchMedia = vi.fn((q) => ({ matches: q.includes('min-width: 1024px'), addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    try {
+      await mountAt('/fnb-order?booking_id=7&room_info=VIP')
+      const panel = () => w.find('aside[aria-label="Pesananmu"]')
+      expect(panel().text()).toContain('Belum ada item')
+      await add('Es Teh')
+      expect(w.find('[data-cart-bar]').exists()).toBe(false)
+      expect(panel().text()).toContain('Es Teh')
+      await panel().findAll('button').find((b) => b.text().includes('Kirim pesanan')).trigger('click'); await flushPromises()
+      expect(createFnbOrder).toHaveBeenCalledWith(expect.objectContaining({ booking_id: '7' }))
+    } finally {
+      window.matchMedia = original
+    }
+  })
+
   it('the cart bar sits above the BottomNav', async () => {
     await mountAt('/fnb-order?booking_id=101')
     await add('Kopi')

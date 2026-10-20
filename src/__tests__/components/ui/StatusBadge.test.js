@@ -13,6 +13,12 @@ describe('StatusBadge', () => {
     expect(w.text()).toBe(label)
     expect(w.attributes('data-tone')).toBe(tone)
   })
+  it('ongoing shows an icon next to the label (not color alone)', () => {
+    const w = mount(StatusBadge, { props: { kind: 'booking', status: 'ongoing' } })
+    expect(w.find('svg').exists()).toBe(true)
+    expect(w.find('svg').attributes('aria-hidden')).toBe('true')
+    expect(w.text()).toBe('Sedang main')
+  })
   it('falls back to the raw status with a neutral tone', () => {
     const w = mount(StatusBadge, { props: { kind: 'booking', status: 'weird' } })
     expect(w.text()).toBe('weird')

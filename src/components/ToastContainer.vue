@@ -15,7 +15,7 @@
           v-for="toast in toasts.filter(region.match)"
           :key="toast.id"
           :data-toast-type="toast.type"
-          class="flex items-start gap-3 px-4 py-3 rounded-2xl border shadow-card cursor-pointer select-none backdrop-blur-md"
+          class="hud-cut-sm flex items-start gap-3 px-4 py-3 cursor-pointer select-none backdrop-blur-md"
           :class="STYLES[toast.type]"
           @click="remove(toast.id)"
         >
@@ -41,10 +41,10 @@ const REGIONS = [
 ]
 
 const STYLES = {
-  success: 'bg-emerald-950/90 border-emerald-700/60 text-emerald-100',
-  error:   'bg-red-950/90 border-red-700/60 text-red-100',
-  warning: 'bg-amber-950/90 border-amber-700/60 text-amber-100',
-  info:    'bg-surface/95 border-border-subtle text-q-text-2',
+  success: 'bg-q-card/95 text-q-text shadow-[inset_3px_0_0_var(--color-q-green),inset_0_0_0_1px_color-mix(in_srgb,var(--color-q-green)_45%,transparent)] [&>svg]:text-q-green',
+  error:   'bg-q-card/95 text-q-text shadow-[inset_3px_0_0_var(--color-q-red),inset_0_0_0_1px_color-mix(in_srgb,var(--color-q-red)_45%,transparent)] [&>svg]:text-q-red',
+  warning: 'bg-q-card/95 text-q-text shadow-[inset_3px_0_0_var(--color-q-gold),inset_0_0_0_1px_color-mix(in_srgb,var(--color-q-gold)_45%,transparent)] [&>svg]:text-q-gold',
+  info:    'bg-q-card/95 text-q-text shadow-[inset_3px_0_0_var(--color-q-primary-l),inset_0_0_0_1px_var(--color-q-border)] [&>svg]:text-q-primary-l',
 }
 </script>
 

@@ -1,33 +1,33 @@
 <template>
   <div class="flex min-h-dvh items-center justify-center p-4">
     <div class="w-full max-w-sm">
-      <p class="mb-4 flex items-center justify-center gap-1.5 rounded-xl bg-q-gold/10 px-4 py-2 text-xs font-semibold text-q-gold">
+      <p class="mb-4 flex items-center justify-center gap-1.5 hud-cut-sm bg-q-gold/10 px-4 py-2 text-xs font-semibold text-q-gold">
         <FlaskConical class="size-4" aria-hidden="true" /> Mode testing — simulasi pembayaran
       </p>
 
       <BaseCard class="shadow-card">
         <header class="border-b border-border-subtle bg-q-primary/10 px-6 py-4 text-center">
-          <h1 class="font-display text-lg font-semibold text-q-text">Quantum Gaming Center</h1>
+          <h1 class="font-display text-lg uppercase text-q-text">Quantum Gaming Center</h1>
           <p class="text-xs text-q-text-3">Halaman pembayaran (mock)</p>
         </header>
 
         <div class="p-6">
           <div class="mb-5 text-center">
             <p class="text-sm text-q-text-2">Total pembayaran</p>
-            <p class="font-display text-3xl font-bold text-q-text tabular-nums">{{ amount ? formatRp(Number(amount)) : '—' }}</p>
+            <p class="font-display text-3xl text-q-text tabular-nums">{{ amount ? formatRp(Number(amount)) : '—' }}</p>
             <p class="mt-1 text-xs text-q-text-3">Invoice: {{ invoiceId || '—' }}</p>
           </div>
 
-          <div v-if="timeLeft !== null" class="mb-5 rounded-xl bg-surface-raised/60 p-3 text-center">
+          <div v-if="timeLeft !== null" class="mb-5 hud-cut-sm bg-surface-raised/60 p-3 text-center">
             <p class="text-xs text-q-text-2">Sisa waktu pembayaran</p>
             <p
-              class="font-display text-xl font-semibold tabular-nums transition-colors"
+              class="font-mono text-xl font-semibold tabular-nums transition-colors"
               :class="timeLeft < 120 ? 'text-q-red' : 'text-q-text'"
               role="timer"
             >{{ formatCountdown(timeLeft) }}</p>
           </div>
 
-          <p v-if="error" role="alert" class="mb-4 rounded-xl bg-q-red/10 p-3 text-center text-sm text-q-red">{{ error }}</p>
+          <p v-if="error" role="alert" class="mb-4 hud-cut-sm bg-q-red/10 p-3 text-center text-sm text-q-red">{{ error }}</p>
 
           <BaseButton size="lg" block :loading="confirming" :disabled="timeLeft === 0" @click="handleConfirm">
             <template v-if="confirming">Memproses...</template>

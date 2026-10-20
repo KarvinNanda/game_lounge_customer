@@ -2,7 +2,7 @@
   <div class="space-y-4">
     <!-- Play Credits -->
     <div v-if="loggedIn">
-      <p class="mb-2 text-xs font-medium text-q-text-2">Play Credits</p>
+      <p class="hud-label mb-2">Play Credits</p>
       <p v-if="loadingCredits" class="text-xs text-q-text-3">Memuat credits…</p>
       <div v-else-if="validCredits.length" role="group" aria-label="Play Credits" class="space-y-2">
         <button
@@ -14,7 +14,7 @@
           :class="optionClass(cr.id === selectedCreditId)"
           @click="emit('select-credit', cr)"
         >
-          <span class="size-9 shrink-0 rounded-lg bg-q-primary/15 text-q-primary-l flex items-center justify-center">
+          <span class="hud-cut-sm size-9 shrink-0 bg-q-primary/15 text-q-primary-l flex items-center justify-center">
             <Gamepad2 class="size-5" aria-hidden="true" />
           </span>
           <span class="flex-1 min-w-0">
@@ -23,7 +23,7 @@
           </span>
         </button>
       </div>
-      <p v-else-if="hasExpiredCredits" role="note" class="flex gap-2 rounded-xl bg-q-red/10 p-3 text-xs text-q-red">
+      <p v-else-if="hasExpiredCredits" role="note" class="hud-cut-sm flex gap-2 bg-q-red/10 p-3 text-xs text-q-red">
         <TriangleAlert class="size-4 shrink-0" aria-hidden="true" />
         <span>Play Credits kamu tidak berlaku untuk {{ formatDateShort(bookingDate) }} atau durasi ini. Pakai metode lain atau beli paket baru.</span>
       </p>
@@ -42,15 +42,15 @@
         :class="optionClass(false)"
         @click="emit('open-vouchers')"
       >
-        <span class="size-9 shrink-0 rounded-lg bg-q-gold/15 text-q-gold flex items-center justify-center">
+        <span class="hud-cut-sm size-9 shrink-0 bg-q-gold/15 text-q-gold flex items-center justify-center">
           <TicketPercent class="size-5" aria-hidden="true" />
         </span>
         <span class="flex-1 text-sm text-q-text-2">Punya voucher?</span>
         <span class="text-xs font-semibold text-q-primary-l">{{ vouchers.length }} tersedia</span>
         <ChevronRight class="size-4 text-q-primary-l" aria-hidden="true" />
       </button>
-      <div v-else class="flex items-center gap-3 rounded-xl border border-q-gold/40 bg-q-gold/10 p-3">
-        <span class="size-9 shrink-0 rounded-lg bg-q-gold/15 text-q-gold flex items-center justify-center">
+      <div v-else class="hud-cut-sm flex items-center gap-3 bg-q-gold/10 p-3 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-q-gold)_40%,transparent)]">
+        <span class="hud-cut-sm size-9 shrink-0 bg-q-gold/15 text-q-gold flex items-center justify-center">
           <TicketPercent class="size-5" aria-hidden="true" />
         </span>
         <span class="flex-1 min-w-0">
@@ -60,7 +60,7 @@
         <button
           type="button"
           :aria-label="`Hapus voucher ${selectedVoucher.code}`"
-          class="size-11 shrink-0 flex items-center justify-center rounded-full text-q-text-2 hover:text-q-red hover:bg-white/5 cursor-pointer focus-visible:outline-2 focus-visible:outline-focus-ring"
+          class="size-11 shrink-0 flex items-center justify-center text-q-text-2 hover:text-q-red cursor-pointer hud-focus"
           @click="emit('clear-voucher')"
         >
           <X class="size-4" aria-hidden="true" />
@@ -70,7 +70,7 @@
 
     <!-- Metode bayar (disembunyikan jika pakai credits) -->
     <div v-if="!selectedCreditId">
-      <p class="mb-2 text-xs font-medium text-q-text-2">Metode pembayaran</p>
+      <p class="hud-label mb-2">Metode pembayaran</p>
       <PaymentMethodPicker :model-value="paymentMethod" @update:model-value="emit('update:paymentMethod', $event)" />
     </div>
 
@@ -99,11 +99,8 @@ defineProps({
 })
 const emit = defineEmits(['select-credit', 'open-vouchers', 'clear-voucher', 'update:paymentMethod'])
 
-const optionClass = (active) => [
-  'flex w-full items-center gap-3 rounded-xl border p-3 text-left cursor-pointer transition-colors',
-  'focus-visible:outline-2 focus-visible:outline-focus-ring',
-  active ? 'border-q-primary bg-q-primary/10' : 'border-border-subtle hover:border-q-primary/60',
-]
+// Tampilan aktif/tidak dari aria-pressed (lihat utility hud-option)
+const optionClass = () => 'hud-option flex w-full items-center gap-3 p-3 text-left'
 
 const voucherLabel = (v) => (v.discount_type === 'percentage' ? `${v.discount_value}% off` : `Hemat ${formatRp(v.discount_value)}`)
 </script>

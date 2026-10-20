@@ -1,103 +1,126 @@
 <template>
-  <nav class="sticky top-0 z-50 bg-q-bg/80 backdrop-blur-xl border-b border-border-subtle" aria-label="Navigasi utama">
-    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+  <nav class="sticky top-0 z-50 border-b border-border-subtle bg-q-bg/85 backdrop-blur-xl" aria-label="Navigasi utama">
+    <span aria-hidden="true" class="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-q-primary-l/50 to-transparent" />
+    <div class="mx-auto flex h-13 max-w-6xl items-center gap-3 px-4 lg:gap-6 lg:px-6">
 
-      <RouterLink to="/" class="flex flex-col leading-tight rounded-md focus-visible:outline-2 focus-visible:outline-focus-ring">
-        <span class="font-display text-q-text font-bold text-xl tracking-wide">Quantum</span>
-        <span class="text-q-text-3 text-[10px] font-medium tracking-[0.25em] uppercase">Gaming Center</span>
+      <RouterLink to="/" class="flex flex-col leading-none hud-focus" aria-label="Quantum Gaming Center, ke Home">
+        <span class="font-display text-[17px] tracking-[0.06em] text-q-text">QUANTUM</span>
+        <span class="mt-1 font-mono text-[8px] font-semibold tracking-[0.3em] text-q-primary-l">GAMING CENTER</span>
       </RouterLink>
 
-      <!-- Desktop links -->
-      <div class="hidden md:flex items-center gap-1">
-        <RouterLink to="/" :class="linkClass('/')" :aria-current="isActive('/') ? 'page' : undefined">Home</RouterLink>
-        <template v-if="authStore.isLoggedIn">
-          <RouterLink
-            v-for="link in AUTH_LINKS"
-            :key="link.path"
-            :to="link.path"
-            :class="linkClass(link.path)"
+      <!-- Desktop links: selalu link asli (middle-click / tab baru tetap jalan) -->
+      <div data-nav-links class="mx-auto hidden h-full items-stretch gap-1 lg:flex">
+        <RouterLink v-for="link in LINKS" :key="link.path" v-slot="{ href, navigate }" :to="link.path" custom>
+          <a
+            :href="href"
             :aria-current="isActive(link.path) ? 'page' : undefined"
+            :class="linkClass(link.path)"
+            @click="onLinkClick($event, navigate, link)"
           >
             {{ link.label }}
-          </RouterLink>
-        </template>
+            <span
+              aria-hidden="true"
+              class="absolute inset-x-2.5 bottom-0 h-0.5 transition-opacity duration-150"
+              :class="isActive(link.path) ? 'bg-q-primary-l opacity-100 shadow-glow-l' : 'opacity-0'"
+            />
+          </a>
+        </RouterLink>
       </div>
 
-      <div class="flex items-center gap-2">
-        <!-- Bell -->
-        <div v-if="authStore.isLoggedIn" class="relative">
-          <button
-            type="button"
-            :aria-label="expiringCount > 0 ? `Notifikasi, ${expiringCount} belum dibaca` : 'Notifikasi'"
-            :aria-expanded="showBell"
-            :class="ICON_BTN"
-            @click="toggle('bell')"
+      <div class="ml-auto flex items-center gap-2 lg:ml-0">
+        <template v-if="authStore.isLoggedIn">
+          <!-- Sisa jam Play Credits -->
+          <RouterLink
+            to="/my-credits"
+            data-credits-chip
+            :aria-label="`Sisa ${totalHours} jam Play Credits`"
+            class="group relative isolate inline-flex min-h-11 items-center gap-1.5 px-3 font-mono text-xs font-semibold text-q-primary-l hud-press hud-focus"
           >
-            <Bell class="size-[18px]" aria-hidden="true" />
-          </button>
-          <span
-            v-if="expiringCount > 0"
-            class="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-q-red rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-            aria-hidden="true"
-          >{{ expiringCount }}</span>
+            <HudFace tone="default" cut="sm" hoverable />
+            <Diamond class="size-3.5" aria-hidden="true" />
+            <span aria-hidden="true" class="tabular-nums">{{ displayHours }} JAM</span>
+          </RouterLink>
 
-          <Transition name="pop">
-            <div v-if="showBell" :class="[MENU, 'w-72 p-4']">
-              <div class="text-sm font-semibold text-q-text mb-3">Notifikasi</div>
-              <div v-if="!expiringCredits.length" class="text-q-text-3 text-xs text-center py-4">
-                Tidak ada notifikasi baru
+          <!-- Bell -->
+          <div class="relative">
+            <button
+              type="button"
+              :aria-label="expiringCount > 0 ? `Notifikasi, ${expiringCount} belum dibaca` : 'Notifikasi'"
+              :aria-expanded="showBell"
+              :class="ICON_BTN"
+              @click="toggle('bell')"
+            >
+              <HudFace tone="default" cut="sm" hoverable />
+              <Bell class="size-[18px]" aria-hidden="true" />
+            </button>
+            <span
+              v-if="expiringCount > 0"
+              class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center bg-q-red px-1 font-mono text-[10px] font-bold text-q-bg"
+              aria-hidden="true"
+            >{{ expiringCount }}</span>
+
+            <Transition name="pop">
+              <div v-if="showBell" :class="[MENU, 'w-72 p-4']">
+                <HudFace tone="default" />
+                <p class="hud-label mb-3">Notifikasi</p>
+                <div v-if="!expiringCredits.length" class="py-4 text-center text-xs text-q-text-3">
+                  Tidak ada notifikasi baru
+                </div>
+                <ul v-else class="space-y-2">
+                  <li v-for="cr in expiringCredits" :key="cr.id" class="relative isolate p-3">
+                    <HudFace tone="raised" cut="sm" />
+                    <div class="mb-0.5 flex items-center gap-1.5 text-xs font-semibold text-q-gold">
+                      <TriangleAlert class="size-3.5" aria-hidden="true" /> Credits hampir habis
+                    </div>
+                    <div class="text-xs font-medium text-q-text">{{ cr.package?.name }}</div>
+                    <div class="text-[11px] text-q-text-2">
+                      Sisa {{ cr.remaining_hours }} jam · Expired {{ formatExpiry(cr.expires_at) }}
+                    </div>
+                  </li>
+                </ul>
               </div>
-              <ul v-else class="space-y-2">
-                <li v-for="cr in expiringCredits" :key="cr.id" class="bg-surface-raised rounded-xl p-3">
-                  <div class="flex items-center gap-1.5 text-xs font-semibold text-q-gold mb-0.5">
-                    <TriangleAlert class="size-3.5" aria-hidden="true" /> Credits hampir habis
-                  </div>
-                  <div class="text-q-text text-xs font-medium">{{ cr.package?.name }}</div>
-                  <div class="text-q-text-3 text-[11px]">
-                    Sisa {{ cr.remaining_hours }} jam · Expired {{ formatExpiry(cr.expires_at) }}
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </Transition>
-        </div>
+            </Transition>
+          </div>
+
+          <!-- Profile -->
+          <div class="relative">
+            <button
+              type="button"
+              aria-label="Menu profil"
+              :aria-expanded="showProfile"
+              class="group relative isolate flex min-h-11 cursor-pointer items-center gap-2 pl-1.5 pr-1.5 lg:pr-3 hud-press hud-focus"
+              @click="toggle('profile')"
+            >
+              <HudFace tone="default" cut="sm" hoverable />
+              <span class="hud-hex flex size-8 items-center justify-center bg-gradient-to-br from-q-primary-l to-q-primary-strong text-xs font-bold text-white" aria-hidden="true">
+                {{ authStore.customer?.name?.[0]?.toUpperCase() }}
+              </span>
+              <span class="hidden text-sm font-semibold text-q-text lg:block">
+                {{ authStore.customer?.name?.split(' ')[0] }}
+              </span>
+              <ChevronDown class="hidden size-4 text-q-text-3 transition-transform duration-150 lg:block" :class="{ 'rotate-180': showProfile }" aria-hidden="true" />
+            </button>
+
+            <Transition name="pop">
+              <div v-if="showProfile" :class="[MENU, 'w-52 py-1']">
+                <HudFace tone="default" />
+                <RouterLink to="/profile" :class="MENU_ITEM" @click="closeMenus">
+                  <User class="size-4" aria-hidden="true" /> Profil Saya
+                </RouterLink>
+                <RouterLink to="/my-fnb-orders" :class="MENU_ITEM" @click="closeMenus">
+                  <UtensilsCrossed class="size-4" aria-hidden="true" /> Pesanan F&amp;B
+                </RouterLink>
+                <div class="mx-3 my-1 border-t border-border-subtle" />
+                <button type="button" :class="[MENU_ITEM, 'w-full text-q-red! hover:text-q-red!']" @click="handleLogout">
+                  <LogOut class="size-4" aria-hidden="true" /> Keluar
+                </button>
+              </div>
+            </Transition>
+          </div>
+        </template>
 
         <!-- Guest -->
-        <BaseButton v-if="!authStore.isLoggedIn" to="/login" size="sm" class="rounded-full">Login</BaseButton>
-
-        <!-- Profile -->
-        <div v-else class="relative">
-          <button
-            type="button"
-            aria-label="Menu profil"
-            :aria-expanded="showProfile"
-            class="flex items-center gap-2 min-h-11 bg-surface border border-border-subtle rounded-full pl-1 pr-3 hover:border-q-primary transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
-            @click="toggle('profile')"
-          >
-            <span class="size-8 rounded-full bg-q-primary-strong flex items-center justify-center text-white font-bold text-xs" aria-hidden="true">
-              {{ authStore.customer?.name?.[0]?.toUpperCase() }}
-            </span>
-            <span class="hidden md:block text-sm font-medium text-q-text">
-              {{ authStore.customer?.name?.split(' ')[0] }}
-            </span>
-            <ChevronDown class="size-4 text-q-text-3 transition-transform duration-200" :class="{ 'rotate-180': showProfile }" aria-hidden="true" />
-          </button>
-
-          <Transition name="pop">
-            <div v-if="showProfile" :class="[MENU, 'w-52 py-1']">
-              <RouterLink to="/profile" :class="MENU_ITEM" @click="closeMenus">
-                <User class="size-4" aria-hidden="true" /> Profil Saya
-              </RouterLink>
-              <RouterLink to="/my-fnb-orders" :class="MENU_ITEM" @click="closeMenus">
-                <UtensilsCrossed class="size-4" aria-hidden="true" /> Pesanan FnB
-              </RouterLink>
-              <div class="my-1 border-t border-border-subtle" />
-              <button type="button" :class="[MENU_ITEM, 'w-full text-q-red hover:text-q-red']" @click="handleLogout">
-                <LogOut class="size-4" aria-hidden="true" /> Keluar
-              </button>
-            </div>
-          </Transition>
-        </div>
+        <BaseButton v-else to="/login" size="sm">Login</BaseButton>
       </div>
     </div>
 
@@ -110,40 +133,57 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore }                from '@/stores/authStore'
 import { useToast }                    from '@/composables/useToast'
+import { useCreditsSummary }           from '@/composables/useCreditsSummary'
+import { useCountUp }                  from '@/composables/useCountUp'
 import { customerLogout, getCreditsExpiring } from '@/api/authApi'
-import { Bell, ChevronDown, User, UtensilsCrossed, LogOut, TriangleAlert } from 'lucide-vue-next'
+import { Bell, ChevronDown, User, UtensilsCrossed, LogOut, TriangleAlert, Diamond } from 'lucide-vue-next'
 import BaseButton                      from '@/components/ui/BaseButton.vue'
+import HudFace                         from '@/components/ui/HudFace.vue'
 
 const router    = useRouter()
 const route     = useRoute()
 const authStore = useAuthStore()
 const toast     = useToast()
 
+const { totalHours, refresh: refreshCredits } = useCreditsSummary()
+const displayHours = useCountUp(totalHours)
+
 const showProfile     = ref(false)
 const showBell        = ref(false)
 const expiringCredits = ref([])
 const expiringCount   = ref(0)
 
-const AUTH_LINKS = [
-  { path: '/my-bookings', label: 'My Bookings' },
-  { path: '/my-credits',  label: 'Play Credits' },
-  { path: '/promo',       label: 'Promo' },
+const LINKS = [
+  { path: '/',            label: 'Home' },
+  { path: '/booking',     label: 'Booking',      requiresAuth: true },
+  { path: '/my-bookings', label: 'My Bookings',  requiresAuth: true },
+  { path: '/my-credits',  label: 'Play Credits', requiresAuth: true },
+  { path: '/promo',       label: 'Promo',        requiresAuth: true },
 ]
 
-const ICON_BTN  = 'relative size-11 flex items-center justify-center rounded-full bg-surface border border-border-subtle text-q-text-2 hover:text-q-text hover:border-q-primary transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring'
-const MENU      = 'absolute right-0 top-13 z-50 origin-top-right bg-surface border border-border-subtle rounded-2xl shadow-card'
-const MENU_ITEM = 'flex items-center gap-2.5 min-h-11 px-4 text-sm text-q-text-2 hover:bg-surface-raised hover:text-q-text transition-colors cursor-pointer'
+const ICON_BTN  = 'group relative isolate size-11 flex items-center justify-center text-q-text-2 hover:text-q-primary-l cursor-pointer hud-press hud-focus'
+const MENU      = 'absolute right-0 top-13 z-50 isolate origin-top-right drop-shadow-[0_8px_24px_rgb(0_0_0/0.6)]'
+const MENU_ITEM = 'flex items-center gap-2.5 min-h-11 px-4 text-sm text-q-text-2 hover:bg-q-primary/10 hover:text-q-text transition-colors cursor-pointer hud-focus'
 
 const isActive  = (path) => (path === '/' ? route.path === '/' : route.path.startsWith(path))
 const linkClass = (path) => [
-  'relative min-h-11 inline-flex items-center px-3 rounded-lg text-sm font-medium transition-colors cursor-pointer',
-  'focus-visible:outline-2 focus-visible:outline-focus-ring',
-  isActive(path) ? 'text-q-text bg-white/5' : 'text-q-text-2 hover:text-q-text',
+  'relative inline-flex items-center px-3.5 text-sm font-semibold transition-colors hud-focus',
+  isActive(path) ? 'text-q-text bg-gradient-to-b from-transparent to-q-primary/15' : 'text-q-text-2 hover:text-q-text',
 ]
+
+// Tamu yang klik link terproteksi → modal login, bukan redirect
+const onLinkClick = (e, navigate, link) => {
+  if (link.requiresAuth && !authStore.isLoggedIn) {
+    e.preventDefault()
+    authStore.openAuthModal(link.path)
+    return
+  }
+  navigate(e)
+}
 
 const closeMenus = () => { showProfile.value = false; showBell.value = false }
 const toggle = (which) => {
@@ -179,10 +219,18 @@ const formatExpiry = (d) => {
   return `${diff} hari lagi`
 }
 
+// Login/logout di tab ini → chip ikut berubah
+watch(() => authStore.isLoggedIn, () => refreshCredits())
+
+// Setelah bayar (credits terpakai / dibeli) atau buka Play Credits → angka chip harus baru
+const CREDIT_REFRESH_PATHS = ['/payment/success', '/credits/success', '/my-credits']
+watch(() => route.path, (path) => { if (CREDIT_REFRESH_PATHS.includes(path)) refreshCredits() })
+
 let pollInterval = null
 
 onMounted(() => {
   fetchExpiringCredits()
+  refreshCredits()
   pollInterval = setInterval(fetchExpiringCredits, 5 * 60 * 1000)
   window.addEventListener('keydown', onKeydown)
 })

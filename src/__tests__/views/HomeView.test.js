@@ -12,6 +12,8 @@ vi.mock('@/api/bannerApi', () => ({
 
 vi.mock('@/api/authApi', () => ({
   getCustomerMe: vi.fn(),
+  getMyBookings: vi.fn(),
+  getMyCredits:  vi.fn(),
 }))
 
 // Mock api/index (used for /public/room-templates)
@@ -39,9 +41,12 @@ vi.mock('swiper/modules', () => ({
   Autoplay:   {},
   Pagination: {},
   Navigation: {},
+  EffectFade: {},
 }))
 
 import { getBanners } from '@/api/bannerApi'
+import { getMyBookings, getMyCredits } from '@/api/authApi'
+import { __resetCreditsSummary } from '@/composables/useCreditsSummary'
 import api from '@/api/index'
 import HomeView from '@/views/HomeView.vue'
 
@@ -63,9 +68,10 @@ const makeRouter = async () => {
   return router
 }
 
-const mountHome = async () => {
+const mountHome = async ({ loggedIn = false } = {}) => {
   const pinia  = createPinia()
   setActivePinia(pinia)
+  if (loggedIn) useAuthStore().setAuth({ name: 'Alice', type: 'member' })
   const router = await makeRouter()
   const wrapper = mount(HomeView, {
     global: {
@@ -85,8 +91,11 @@ const mountHome = async () => {
 describe('HomeView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    __resetCreditsSummary()
     getBanners.mockResolvedValue({ data: { data: [] } })
     api.get.mockResolvedValue({ data: { data: [] } })
+    getMyBookings.mockResolvedValue({ data: { data: [], meta: { page: 1, total_page: 0 } } })
+    getMyCredits.mockResolvedValue({ data: { data: [] } })
   })
 
   // ── Mounting & API calls ─────────────────────────────────────────────────────
@@ -147,13 +156,53 @@ describe('HomeView', () => {
     expect(text).toMatch(/book|booking/i)
   })
 
-  it('renders all 3 quick action cards', async () => {
+  it('renders the Booking, Top Up and Private Event quick actions', async () => {
     const { wrapper } = await mountHome()
     await flushPromises()
-    const text = wrapper.text()
-    expect(text).toContain('Booking')
-    expect(text).toContain('Top Up Play Credits')
-    expect(text).toContain('Private Event Booking')
+    const labels = wrapper.findAll('[data-quick-action]').map((el) => el.text())
+    expect(labels.some((t) => t.includes('Booking'))).toBe(true)
+    expect(labels.some((t) => t.includes('Top Up'))).toBe(true)
+    expect(labels.some((t) => t.includes('Private Event'))).toBe(true)
+  })
+
+  // ── Session card ─────────────────────────────────────────────────────────────
+
+  const booking = (status, date = '2026-10-21') => ({
+    id: 42, status, booking_code: 'QGC-240001', booking_date: date, start_time: '19:00:00', end_time: '21:00:00',
+    store: { name: 'Kelapa Gading' }, room: { room_template: { name: 'VIP Room' } },
+  })
+
+  it('shows SEDANG MAIN with a Pesan F&B link for an ongoing booking', async () => {
+    getMyBookings.mockImplementation(({ status }) => Promise.resolve({ data: { data: status === 'ongoing' ? [booking('ongoing')] : [] } }))
+    const { wrapper } = await mountHome({ loggedIn: true })
+    await flushPromises()
+    const card = wrapper.find('[data-session-card]')
+    expect(card.text()).toContain('SEDANG MAIN')
+    expect(card.text()).toContain('VIP Room')
+    expect(card.text()).toContain('Pesan F&B')
+  })
+
+  it('shows NEXT SESSION without Pesan F&B for an upcoming booking', async () => {
+    getMyBookings.mockImplementation(({ status }) => Promise.resolve({ data: { data: status === 'upcoming' ? [booking('upcoming')] : [] } }))
+    const { wrapper } = await mountHome({ loggedIn: true })
+    await flushPromises()
+    const card = wrapper.find('[data-session-card]')
+    expect(card.text()).toContain('NEXT SESSION')
+    expect(card.text()).not.toContain('Pesan F&B')
+  })
+
+  it('hides the session card for guests', async () => {
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    expect(wrapper.find('[data-session-card]').exists()).toBe(false)
+    expect(getMyBookings).not.toHaveBeenCalled()
+  })
+
+  it('no longer renders the features block or the social links (moved to footer/profile)', async () => {
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Game Terlengkap')
+    expect(wrapper.find('a[target="_blank"]').exists()).toBe(false)
   })
 
   it('does not render a broken <img> for a banner without image_url', async () => {
@@ -184,6 +233,18 @@ describe('HomeView', () => {
     const { wrapper } = await mountHome()
     await flushPromises()
     expect(wrapper.find('[data-hero-fallback]').exists()).toBe(true)
+  })
+
+  it('only the visible hero slide is in the Tab order (faded slides are not focusable)', async () => {
+    getBanners.mockResolvedValue({ data: { data: [
+      { id: 1, title: 'A', image_url: '' }, { id: 2, title: 'B', image_url: '' },
+    ] } })
+    const { wrapper } = await mountHome()
+    await flushPromises()
+    const links = wrapper.findAll('section[aria-label="Promo"] .swiper-slide-stub a')
+    expect(links[0].attributes('tabindex')).toBeUndefined()
+    expect(links[1].attributes('tabindex')).toBe('-1')
+    expect(links[1].attributes('aria-hidden')).toBe('true')
   })
 
   it('has exactly one <h1> even with several banners', async () => {

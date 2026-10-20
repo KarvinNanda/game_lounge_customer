@@ -40,4 +40,26 @@ describe('RoomStep', () => {
     expect(w.emitted('select')).toBeUndefined()
     w.unmount()
   })
+  it('shows 4 rooms, then a "+N lainnya" button that reveals the rest in place', async () => {
+    const rooms = [1, 2, 3, 4, 5, 6].map((id) => ({ ...ROOMS[0], id, name: `Room ${id}` }))
+    const w = mount(RoomStep, { props: { rooms, modelValue: 0 } })
+    expect(w.findAll('[role="radio"]')).toHaveLength(4)
+    const more = w.findAll('button').find((b) => b.text() === '+2 lainnya')
+    expect(more.attributes('aria-expanded')).toBe('false')
+    await more.trigger('click')
+    expect(w.findAll('[role="radio"]')).toHaveLength(6)
+  })
+  it('starts expanded when the selected room is beyond the first 4', () => {
+    const rooms = [1, 2, 3, 4, 5, 6].map((id) => ({ ...ROOMS[0], id, name: `Room ${id}` }))
+    const w = mount(RoomStep, { props: { rooms, modelValue: 6 } })
+    expect(w.findAll('[role="radio"]')).toHaveLength(6)
+  })
+  it('expands when rooms arrive later and the selected room is beyond the first 4 (deep link)', async () => {
+    const w = mount(RoomStep, { props: { rooms: [], modelValue: 6, loading: true } })
+    const rooms = [1, 2, 3, 4, 5, 6].map((id) => ({ ...ROOMS[0], id, name: `Room ${id}` }))
+    await w.setProps({ rooms, loading: false })
+    expect(w.findAll('[role="radio"]')).toHaveLength(6)
+    expect(w.find('[role="radio"][aria-checked="true"]').text()).toContain('Room 6')
+  })
 })
+

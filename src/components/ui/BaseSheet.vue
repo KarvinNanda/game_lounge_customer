@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <Transition name="sheet">
-      <div v-if="modelValue" class="fixed inset-0 z-50 flex items-end justify-center md:items-center md:p-4">
+      <div v-if="modelValue" class="fixed inset-0 z-50 flex items-end justify-center lg:items-center lg:p-4">
         <div data-sheet-backdrop class="sheet-backdrop absolute inset-0 bg-black/70 backdrop-blur-sm" aria-hidden="true" @click="close" />
 
         <div
@@ -9,18 +9,18 @@
           role="dialog"
           aria-modal="true"
           :aria-labelledby="titleId"
-          class="sheet-panel relative z-10 flex w-full max-h-[85dvh] flex-col bg-surface border border-border-subtle rounded-t-3xl md:max-w-md md:rounded-2xl shadow-card"
+          class="sheet-panel hud-cut relative z-10 flex w-full max-h-[85dvh] flex-col bg-surface shadow-[inset_0_0_0_1px_var(--color-q-border)] lg:max-w-md"
           style="padding-bottom: env(safe-area-inset-bottom)"
         >
-          <header class="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-border-subtle">
+          <header class="flex items-start justify-between gap-3 border-b border-border-subtle px-5 pt-5 pb-3">
             <div class="min-w-0">
-              <h2 :id="titleId" class="font-display text-lg font-semibold text-q-text">{{ title }}</h2>
+              <h2 :id="titleId" class="font-display text-lg uppercase tracking-wide text-q-text">{{ title }}</h2>
               <p v-if="description" class="text-q-text-3 text-xs mt-0.5">{{ description }}</p>
             </div>
             <button
               type="button"
               aria-label="Tutup"
-              class="-mr-2 -mt-1 size-11 shrink-0 flex items-center justify-center rounded-full text-q-text-2 hover:text-q-text hover:bg-white/5 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-focus-ring"
+              class="-mr-2 -mt-1 size-11 shrink-0 flex items-center justify-center text-q-text-2 hover:text-q-primary-l transition-colors cursor-pointer hud-focus"
               @click="close"
             >
               <X class="size-5" aria-hidden="true" />

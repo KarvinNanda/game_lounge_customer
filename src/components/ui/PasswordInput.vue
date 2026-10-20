@@ -6,7 +6,7 @@
       :type="visible ? 'text' : 'password'"
       :autocomplete="autocomplete"
       :placeholder="placeholder"
-      class="w-full min-h-11 rounded-xl border border-border-subtle bg-surface-raised/60 py-2.5 pl-4 pr-12 text-sm text-q-text placeholder:text-q-text-3 transition-colors focus:outline-none focus:border-q-primary focus:ring-2 focus:ring-q-primary/30"
+      class="hud-input pr-12"
       v-bind="$attrs"
       @input="emit('update:modelValue', $event.target.value)"
     />
@@ -14,7 +14,7 @@
       type="button"
       aria-label="Tampilkan password"
       :aria-pressed="visible"
-      class="absolute right-0 top-0 size-11 flex items-center justify-center rounded-xl text-q-text-3 hover:text-q-text-2 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-focus-ring"
+      class="absolute right-0 top-0 size-11 flex items-center justify-center text-q-text-3 hover:text-q-primary-l cursor-pointer transition-colors hud-focus"
       @click="visible = !visible"
     >
       <EyeOff v-if="visible" class="size-[18px]" aria-hidden="true" />

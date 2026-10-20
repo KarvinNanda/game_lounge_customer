@@ -33,3 +33,33 @@ describe('ProfileView change password', () => {
     expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('Perangkat lain sudah dikeluarkan'))
   })
 })
+
+describe('ProfileView layout', () => {
+  const mountProfile = async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: { template: '<div/>' } }] })
+    await router.push('/'); await router.isReady()
+    return mount(ProfileView, { global: { plugins: [router, pinia] } })
+  }
+
+  it('phone: tabs switch panels while both forms stay in the DOM', async () => {
+    const w = await mountProfile()
+    const tabs = w.find('[role="group"][aria-label="Bagian profil"]')
+    expect(tabs.findAll('button').map((b) => b.text())).toEqual(['Data diri', 'Ganti password'])
+    const dataPanel = () => w.find('form[aria-label="Data diri"]').element.closest('[data-panel]')
+    const passPanel = () => w.find('form[aria-label="Ganti password"]').element.closest('[data-panel]')
+    expect(dataPanel().style.display).not.toBe('none')
+    expect(passPanel().style.display).toBe('none')
+    await tabs.findAll('button')[1].trigger('click')
+    expect(dataPanel().style.display).toBe('none')
+    expect(passPanel().style.display).not.toBe('none')
+    expect(w.find('#pass-old').exists()).toBe(true)
+    expect(w.find('#profile-name').exists()).toBe(true)
+  })
+
+  it('shows the 3 social links', async () => {
+    const w = await mountProfile()
+    expect(w.findAll('a[target="_blank"]')).toHaveLength(3)
+  })
+})

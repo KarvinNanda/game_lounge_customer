@@ -6,24 +6,22 @@
       <button
         v-if="route.query.redirect"
         type="button"
-        class="mb-4 inline-flex items-center gap-1.5 min-h-11 rounded-md text-q-text-2 hover:text-q-text text-sm transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-focus-ring"
+        class="mb-4 inline-flex min-h-11 cursor-pointer items-center gap-1.5 text-sm text-q-text-2 transition-colors hover:text-q-primary-l hud-focus"
         @click="$router.back()"
       >
         <ArrowLeft class="size-4" aria-hidden="true" /> Kembali
       </button>
 
-      <div class="text-center mb-6">
-        <div class="font-display text-q-text font-bold text-3xl tracking-wide">Quantum</div>
-        <div class="text-q-text-3 text-xs font-medium tracking-[0.25em] uppercase">Gaming Center</div>
-      </div>
+      <AuthBrand />
 
-      <div class="bg-surface/80 backdrop-blur-sm border border-border-subtle rounded-3xl p-6 shadow-card">
-        <h1 class="font-display text-xl font-semibold text-q-text mb-1">Selamat Datang!</h1>
+      <HudPanel brackets class="p-6">
+        <HudLabel tone="accent" tag="p" class="mb-1">PLAYER LOGIN</HudLabel>
+        <h1 class="font-display text-xl uppercase tracking-wide text-q-text mb-1">Selamat Datang!</h1>
         <p class="text-q-text-3 text-sm mb-5">Login untuk mulai bermain</p>
 
         <form class="space-y-4" novalidate @submit.prevent="handleLogin">
           <div>
-            <label for="login-email" class="block text-sm font-medium text-q-text-2 mb-1.5">Email</label>
+            <label for="login-email" class="mb-1.5 block text-xs font-semibold text-q-text-2">Email</label>
             <input
               id="login-email"
               v-model="form.email"
@@ -36,7 +34,7 @@
           </div>
 
           <div>
-            <label for="login-password" class="block text-sm font-medium text-q-text-2 mb-1.5">Password</label>
+            <label for="login-password" class="mb-1.5 block text-xs font-semibold text-q-text-2">Password</label>
             <div class="relative">
               <input
                 id="login-password"
@@ -51,7 +49,7 @@
                 type="button"
                 :aria-label="showPass ? 'Sembunyikan password' : 'Tampilkan password'"
                 :aria-pressed="showPass"
-                class="absolute right-0 top-0 size-11 flex items-center justify-center rounded-xl text-q-text-3 hover:text-q-text-2 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-focus-ring"
+                class="absolute right-0 top-0 size-11 flex items-center justify-center text-q-text-3 hover:text-q-primary-l transition-colors cursor-pointer hud-focus"
                 @click="showPass = !showPass"
               >
                 <EyeOff v-if="showPass" class="size-[18px]" aria-hidden="true" />
@@ -60,7 +58,7 @@
             </div>
           </div>
 
-          <p v-if="error" role="alert" class="text-q-red text-sm text-center bg-q-red/10 rounded-xl py-2 px-3">
+          <p v-if="error" role="alert" class="hud-cut-sm bg-q-red/10 px-3 py-2 text-center text-sm text-q-red">
             {{ error }}
           </p>
 
@@ -72,7 +70,7 @@
         <div class="text-center mt-4">
           <RouterLink
             to="/forgot-password"
-            class="inline-flex min-h-11 items-center text-q-primary-l hover:text-q-text text-sm transition-colors rounded-md focus-visible:outline-2 focus-visible:outline-focus-ring"
+            class="inline-flex min-h-11 items-center text-sm text-q-primary-l transition-colors hover:text-q-text hud-focus"
           >
             Lupa Password?
           </RouterLink>
@@ -81,7 +79,7 @@
         <p class="text-center text-q-text-3 text-xs mt-3 border-t border-border-subtle pt-4 leading-relaxed">
           Belum punya akun? Hubungi admin atau kasir Quantum terdekat.
         </p>
-      </div>
+      </HudPanel>
     </div>
   </div>
 </template>
@@ -94,9 +92,12 @@ import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
 import { sanitizeRedirect } from '@/utils/security'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-vue-next'
+import HudPanel from '@/components/ui/HudPanel.vue'
+import HudLabel from '@/components/ui/HudLabel.vue'
+import AuthBrand from '@/components/auth/AuthBrand.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
-const INPUT = 'w-full min-h-11 bg-surface-raised/60 border border-border-subtle rounded-xl px-4 py-2.5 text-q-text text-sm placeholder:text-q-text-3 transition-colors focus:outline-none focus:border-q-primary focus:ring-2 focus:ring-q-primary/30'
+const INPUT = 'hud-input'
 
 const router    = useRouter()
 const route     = useRoute()

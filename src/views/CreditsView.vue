@@ -1,104 +1,137 @@
 <template>
-  <div class="mx-auto max-w-2xl px-4 sm:px-6 py-6 pb-44 lg:pb-10">
-    <PageHeader title="Top Up Play Credits" subtitle="Beli paket jam bermain, lebih hemat per jam" />
-
-    <ul class="mb-5 flex flex-wrap gap-2 text-xs text-q-text-2">
-      <li v-for="perk in PERKS" :key="perk.label" class="flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5">
-        <component :is="perk.icon" class="size-3.5 text-q-primary-l" aria-hidden="true" /> {{ perk.label }}
-      </li>
-    </ul>
-
-    <div class="space-y-3">
-      <BookingStep
-        v-for="(step, i) in steps"
-        :key="step.title"
-        data-step
-        :data-open="openStep === i"
-        :index="i + 1"
-        :title="step.title"
-        :summary="step.summary"
-        :open="openStep === i"
-        :done="currentStep > i"
-        :cancelable="editingStep === i"
-        @edit="editingStep = i"
-        @cancel="editingStep = null"
-      >
-        <BranchStep v-if="i === 0" :stores="stores" :model-value="selectedStoreId" @select="chooseStore" />
-
-        <template v-else-if="i === 1">
-          <div v-if="loadingPackages" class="grid gap-2 sm:grid-cols-2" aria-busy="true">
-            <BaseSkeleton v-for="n in 4" :key="n" class="h-24" />
-          </div>
-          <p v-else-if="!packages.length" class="py-6 text-center text-sm text-q-text-3">Belum ada paket di cabang ini.</p>
-          <div v-else role="radiogroup" aria-label="Paket credits" class="grid gap-2 sm:grid-cols-2" @keydown="onRadioKeydownManual">
-            <button
-              v-for="(pkg, n) in packages"
-              :key="pkg.id"
-              type="button"
-              role="radio"
-              :aria-checked="selectedPackage?.id === pkg.id"
-              :tabindex="radioTabindex(selectedPackage?.id === pkg.id, n, packages.some((p) => p.id === selectedPackage?.id))"
-              class="relative rounded-xl border p-4 text-left cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-focus-ring"
-              :class="selectedPackage?.id === pkg.id ? 'border-q-primary bg-q-primary/10' : 'border-border-subtle hover:border-q-primary/60'"
-              @click="choosePackage(pkg)"
-            >
-              <BaseBadge v-if="pkg.is_best_value" tone="gold" class="mb-2"><Sparkles class="size-3" aria-hidden="true" /> Terbaik</BaseBadge>
-              <span class="block text-sm font-semibold text-q-text">{{ pkg.name }}</span>
-              <span class="block text-xs text-q-text-3">{{ pkg.total_hours }} jam · berlaku {{ pkg.validity_days }} hari</span>
-              <span class="mt-2 block font-display text-lg font-semibold text-q-text tabular-nums">{{ formatRp(pkg.price) }}</span>
-              <span class="block text-xs text-q-gold">{{ formatRp(pkg.price / pkg.total_hours) }} / jam</span>
-            </button>
-          </div>
-        </template>
-
-        <div v-else class="space-y-4">
-          <dl class="space-y-1.5 rounded-xl bg-surface-raised/50 p-3 text-sm">
-            <div v-for="row in summaryRows" :key="row.label" class="flex justify-between gap-4">
-              <dt class="text-q-text-3">{{ row.label }}</dt>
-              <dd class="text-right text-q-text">{{ row.value }}</dd>
-            </div>
-          </dl>
-
+  <div class="mx-auto max-w-6xl px-4 pt-4 pb-40 sm:px-6 lg:pb-10">
+    <!-- ── HP: layar checkout (?step=pay) ── -->
+    <template v-if="phoneCheckout">
+      <h1 class="sr-only">Top Up Play Credits</h1>
+      <CheckoutShell mode="screen" title="Pembayaran" @close="closeCheckout">
+        <div class="space-y-4">
+          <HudPanel class="p-4">
+            <dl class="space-y-1.5 text-sm">
+              <div v-for="row in summaryRows" :key="row.label" class="flex justify-between gap-4">
+                <dt class="text-q-text-3">{{ row.label }}</dt>
+                <dd class="text-right text-q-text">{{ row.value }}</dd>
+              </div>
+            </dl>
+          </HudPanel>
           <div>
-            <p class="mb-2 text-xs font-medium text-q-text-2">Metode pembayaran</p>
+            <p class="hud-label mb-2">Metode pembayaran</p>
             <PaymentMethodPicker v-model="paymentMethod" />
           </div>
-
-          <details class="rounded-xl bg-surface-raised/50 p-3 text-xs text-q-text-2">
+          <details class="hud-cut-sm bg-surface-raised/50 p-3 text-xs text-q-text-2">
             <summary class="cursor-pointer font-semibold text-q-text">Ketentuan paket</summary>
             <ul class="mt-2 space-y-1">
               <li v-for="item in TERMS" :key="item" class="flex gap-1.5"><Check class="size-3.5 shrink-0 text-q-green" aria-hidden="true" />{{ item }}</li>
             </ul>
           </details>
+          <p v-if="purchaseError" role="alert" class="hud-cut-sm bg-q-red/10 p-3 text-center text-sm text-q-red">{{ purchaseError }}</p>
+        </div>
+      </CheckoutShell>
+    </template>
 
-          <p v-if="purchaseError" role="alert" class="rounded-xl bg-q-red/10 p-3 text-center text-sm text-q-red">{{ purchaseError }}</p>
+    <!-- ── Loadout: cabang → paket ── -->
+    <template v-else>
+      <PageHeader title="Top Up Play Credits" subtitle="Beli paket jam bermain, lebih hemat per jam">
+        <template #actions>
+          <FlowProgress :current="currentStep" :count="STEP_COUNT" class="mt-1.5" />
+        </template>
+      </PageHeader>
 
-          <!-- Wrapper: `hidden` di BaseButton kalah oleh inline-flex miliknya -->
-          <div class="hidden lg:block">
-            <BaseButton size="lg" block :disabled="!canPay" :loading="purchasing" @click="handlePurchase">
+      <ul class="mb-4 flex flex-wrap gap-1.5">
+        <li v-for="perk in PERKS" :key="perk.label" data-benefit class="hud-cut-sm flex items-center gap-1.5 bg-q-primary/10 px-2.5 py-1.5 text-xs text-q-text-2">
+          <component :is="perk.icon" class="size-3.5 text-q-primary-l" aria-hidden="true" /> {{ perk.label }}
+        </li>
+      </ul>
+
+      <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8">
+        <div class="space-y-5">
+          <FlowStep
+            v-for="(step, i) in STEPS"
+            :key="step.title"
+            data-step
+            :index="i + 1"
+            :title="step.title"
+            :locked-hint="step.hint"
+            :state="flow.stateOf(i)"
+            :summary="i === 0 ? selectedStoreName : selectedPackage?.name ?? ''"
+            :cancelable="flow.editing.value === i"
+            :expand-done="isDesktop"
+            :last="i === STEP_COUNT - 1"
+            @edit="flow.edit(i)"
+            @cancel="flow.cancelEdit()"
+          >
+            <BranchStep v-if="i === 0" :stores="stores" :model-value="selectedStoreId" @select="chooseStore" />
+
+            <template v-else>
+              <div v-if="loadingPackages" class="grid gap-1.5 sm:grid-cols-3" aria-busy="true">
+                <BaseSkeleton v-for="n in 3" :key="n" class="h-[132px]" />
+              </div>
+              <p v-else-if="!packages.length" class="py-4 text-center text-sm text-q-text-3">Belum ada paket di cabang ini.</p>
+              <div v-else role="radiogroup" aria-label="Paket credits" class="grid grid-cols-2 gap-1.5 sm:grid-cols-3" @keydown="onRadioKeydownManual">
+                <button
+                  v-for="(pkg, n) in packages"
+                  :key="pkg.id"
+                  type="button"
+                  role="radio"
+                  :aria-checked="selectedPackage?.id === pkg.id"
+                  :tabindex="radioTabindex(selectedPackage?.id === pkg.id, n, packages.some((p) => p.id === selectedPackage?.id))"
+                  class="hud-option flex min-w-0 flex-col p-3 text-left"
+                  @click="choosePackage(pkg)"
+                >
+                  <span class="flex items-start justify-between gap-1">
+                    <span class="font-display text-[26px] leading-none text-q-text tabular-nums">{{ pkg.total_hours }}<span class="ml-0.5 font-mono text-[11px] text-q-text-3">JAM</span></span>
+                    <BaseBadge v-if="pkg.is_best_value" tone="gold"><Sparkles class="size-3" aria-hidden="true" /> Terbaik</BaseBadge>
+                  </span>
+                  <span class="mt-2 block truncate text-sm font-semibold">{{ pkg.name }}</span>
+                  <span class="block text-xs text-q-text-3">berlaku {{ pkg.validity_days }} hari</span>
+                  <span class="mt-1.5 block font-semibold tabular-nums">{{ formatRp(pkg.price) }}</span>
+                  <span class="block text-xs text-q-gold">{{ formatRp(pkg.price / pkg.total_hours) }} / jam</span>
+                </button>
+              </div>
+            </template>
+          </FlowStep>
+        </div>
+
+        <!-- Desktop: ringkasan + pembayaran di kanan -->
+        <CheckoutShell v-if="isDesktop" mode="panel" title="Ringkasan">
+          <dl class="space-y-1.5 text-sm">
+            <div v-for="row in summaryRows" :key="row.label" class="flex justify-between gap-4">
+              <dt class="text-q-text-3">{{ row.label }}</dt>
+              <dd class="text-right" :class="selectedPackage ? 'text-q-text' : 'text-q-text-3'">{{ selectedPackage ? row.value : '—' }}</dd>
+            </div>
+          </dl>
+          <template v-if="flow.ready.value">
+            <div class="mt-4 border-t border-border-subtle pt-4">
+              <p class="hud-label mb-2">Metode pembayaran</p>
+              <PaymentMethodPicker v-model="paymentMethod" />
+            </div>
+            <details class="hud-cut-sm mt-3 bg-surface-raised/50 p-3 text-xs text-q-text-2">
+              <summary class="cursor-pointer font-semibold text-q-text">Ketentuan paket</summary>
+              <ul class="mt-2 space-y-1">
+                <li v-for="item in TERMS" :key="item" class="flex gap-1.5"><Check class="size-3.5 shrink-0 text-q-green" aria-hidden="true" />{{ item }}</li>
+              </ul>
+            </details>
+            <p v-if="purchaseError" role="alert" class="hud-cut-sm mt-3 bg-q-red/10 p-3 text-center text-sm text-q-red">{{ purchaseError }}</p>
+          </template>
+          <template #footer>
+            <BaseButton size="lg" block :disabled="!flow.ready.value || !canPay" :loading="purchasing" @click="handlePurchase">
               {{ purchasing ? 'Memproses...' : 'Bayar Sekarang' }}
             </BaseButton>
-          </div>
-        </div>
-      </BookingStep>
-    </div>
-
-    <!-- Bar bayar sticky (mobile), di atas BottomNav -->
-    <div
-      v-if="selectedPackage"
-      data-pay-bar
-      class="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 md:pb-[env(safe-area-inset-bottom)] z-40 border-t border-border-subtle bg-q-bg/95 backdrop-blur-xl lg:hidden"
-    >
-      <div class="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
-        <div class="min-w-0 flex-1">
-          <p class="text-xs text-q-text-3">Total</p>
-          <p class="font-display text-lg font-semibold text-q-text tabular-nums">{{ formatRp(selectedPackage.price) }}</p>
-        </div>
-        <BaseButton size="lg" :disabled="!canPay" :loading="purchasing" @click="handlePurchase">
-          {{ purchasing ? 'Memproses...' : 'Bayar Sekarang' }}
-        </BaseButton>
+            <p v-if="!flow.ready.value" class="mt-2 text-center text-xs text-q-text-3">Lengkapi {{ flow.remaining.value }} langkah lagi</p>
+          </template>
+        </CheckoutShell>
       </div>
-    </div>
+    </template>
+
+    <PayBar
+      v-if="!isDesktop"
+      label="Total"
+      :amount="selectedPackage ? formatRp(selectedPackage.price) : '—'"
+      :action-label="phoneCheckout ? (purchasing ? 'Memproses...' : 'Bayar Sekarang') : 'Lanjut'"
+      :disabled="phoneCheckout ? !canPay : !flow.ready.value"
+      :loading="phoneCheckout && purchasing"
+      :hint="`Lengkapi ${flow.remaining.value} langkah lagi`"
+      @action="phoneCheckout ? handlePurchase() : openCheckout()"
+    />
   </div>
 </template>
 
@@ -117,7 +150,14 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
-import BookingStep from '@/components/booking/BookingStep.vue'
+import HudPanel from '@/components/ui/HudPanel.vue'
+import FlowStep from '@/components/flow/FlowStep.vue'
+import FlowProgress from '@/components/flow/FlowProgress.vue'
+import PayBar from '@/components/flow/PayBar.vue'
+import CheckoutShell from '@/components/flow/CheckoutShell.vue'
+import { useFlowSteps } from '@/components/flow/useFlowSteps'
+import { useMediaQuery } from '@/composables/useMediaQuery'
+import { useCheckoutStep } from '@/composables/useCheckoutStep'
 import BranchStep from '@/components/booking/BranchStep.vue'
 import PaymentMethodPicker from '@/components/booking/PaymentMethodPicker.vue'
 
@@ -150,15 +190,17 @@ const purchaseError   = ref('')
 const selectedStoreName = computed(() => stores.value.find((s) => s.id === selectedStoreId.value)?.name || '')
 const canPay = computed(() => !!selectedPackage.value && !!paymentMethod.value && !purchasing.value)
 
-// ── Accordion ─────────────────────────────────────────────────────
-const editingStep = ref(null)
+// ── Langkah berurutan: cabang → paket, lalu checkout ─────────────
+const STEP_COUNT  = 2
+const STEPS = [
+  { title: 'Pilih Cabang', hint: '' },
+  { title: 'Pilih Paket',  hint: 'Pilih cabang dulu' },
+]
 const currentStep = computed(() => (!selectedStoreId.value ? 0 : !selectedPackage.value ? 1 : 2))
-const openStep    = computed(() => editingStep.value ?? currentStep.value)
-const steps = computed(() => [
-  { title: 'Pilih Cabang', summary: selectedStoreName.value },
-  { title: 'Pilih Paket',  summary: selectedPackage.value?.name ?? '' },
-  { title: 'Pembayaran',   summary: '' },
-])
+const flow        = useFlowSteps(STEP_COUNT, currentStep)
+const isDesktop   = useMediaQuery('(min-width: 1024px)')
+const { inCheckout, open: openCheckout, close: closeCheckout } = useCheckoutStep(flow.ready)
+const phoneCheckout = computed(() => inCheckout.value && !isDesktop.value)
 const summaryRows = computed(() => [
   { label: 'Paket',        value: selectedPackage.value?.name },
   { label: 'Total jam',    value: `${selectedPackage.value?.total_hours} jam` },
@@ -171,8 +213,9 @@ const summaryRows = computed(() => [
 let packagesSeq = 0 // paket dari cabang yang sudah tidak dipilih, yang telat datang, diabaikan
 
 const chooseStore = async (id) => {
-  editingStep.value = null
+  flow.cancelEdit()
   if (id === selectedStoreId.value) return
+  if (selectedPackage.value) toast.info('Paket di-reset')
   const mySeq = ++packagesSeq
   selectedStoreId.value = id
   selectedPackage.value = null
@@ -191,7 +234,7 @@ const chooseStore = async (id) => {
 }
 
 const choosePackage = (pkg) => {
-  editingStep.value     = null
+  flow.cancelEdit()
   selectedPackage.value = pkg
   purchaseError.value   = ''
 }

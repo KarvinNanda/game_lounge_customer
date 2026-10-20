@@ -1,8 +1,12 @@
 <template>
-  <div class="mx-auto max-w-2xl px-4 sm:px-6 py-6">
-    <PageHeader title="Promo & Voucher" subtitle="Voucher yang bisa kamu pakai saat booking" />
+  <div class="mx-auto max-w-6xl px-4 pt-4 pb-6 sm:px-6">
+    <PageHeader title="Promo & Voucher" subtitle="Voucher yang bisa kamu pakai saat booking">
+      <template v-if="vouchers.length" #actions>
+        <BaseButton to="/booking" size="sm">Pakai saat booking</BaseButton>
+      </template>
+    </PageHeader>
 
-    <div v-if="loading" class="space-y-2" aria-busy="true">
+    <div v-if="loading" class="grid gap-2 lg:grid-cols-3" aria-busy="true">
       <BaseSkeleton v-for="i in 3" :key="i" class="h-24" />
     </div>
 
@@ -16,12 +20,13 @@
 
     <BaseEmptyState v-else-if="!vouchers.length" :icon="TicketPercent" title="Belum ada voucher" text="Voucher baru akan muncul di sini." />
 
-    <ul v-else class="space-y-2">
+    <ul v-else class="grid gap-2 lg:grid-cols-3">
       <li v-for="v in vouchers" :key="v.voucher_id">
-        <BaseCard class="flex items-stretch overflow-hidden" :class="{ 'opacity-60': expiry(v).state === 'expired' }">
-          <div class="flex w-24 shrink-0 flex-col items-center justify-center gap-1 border-r border-dashed border-border-subtle bg-q-gold/10 p-3 text-center text-q-gold">
-            <TicketPercent class="size-6" aria-hidden="true" />
-            <span class="text-xs font-bold leading-tight">{{ discountLabel(v) }}</span>
+        <!-- Tiket: potongan setengah lingkaran di tengah sisi kiri/kanan -->
+        <div class="ticket relative flex h-full items-stretch bg-surface shadow-[inset_0_0_0_1px_var(--color-q-border)]" :class="{ 'opacity-60': expiry(v).state === 'expired' }">
+          <div class="flex w-24 shrink-0 flex-col items-center justify-center gap-1 border-r border-dashed border-q-border bg-q-gold/10 p-3 text-center text-q-gold">
+            <TicketPercent class="size-5" aria-hidden="true" />
+            <span class="font-display text-[15px] leading-tight">{{ discountLabel(v) }}</span>
           </div>
           <div class="min-w-0 flex-1 p-3">
             <p class="truncate text-sm font-semibold text-q-text">{{ v.name }}</p>
@@ -29,23 +34,21 @@
               <template v-if="v.min_purchase > 0">min {{ formatRp(v.min_purchase) }} · </template>
               <span :class="EXPIRY_TONE[expiry(v).state]">{{ expiry(v).state === 'ok' ? `s/d ${formatDateShort(v.end_date?.slice(0, 10))}` : expiry(v).label }}</span>
             </p>
-            <div class="mt-2 flex items-center gap-2">
-              <code class="rounded-md bg-white/5 px-2 py-1 font-mono text-xs tracking-wider text-q-text">{{ v.code }}</code>
+            <div class="mt-2 flex items-center gap-1">
+              <code class="hud-cut-sm bg-q-bg/70 px-2 py-1 font-mono text-xs tracking-[0.12em] text-q-primary-l">{{ v.code }}</code>
               <button
                 type="button"
                 :aria-label="`Salin kode ${v.code}`"
-                class="size-11 -my-2 flex items-center justify-center rounded-full text-q-text-2 hover:text-q-text hover:bg-white/5 cursor-pointer focus-visible:outline-2 focus-visible:outline-focus-ring"
+                class="-my-2 flex size-11 cursor-pointer items-center justify-center text-q-text-2 transition-colors hover:text-q-primary-l hud-focus"
                 @click="copy(v.code)"
               >
                 <Copy class="size-4" aria-hidden="true" />
               </button>
             </div>
           </div>
-        </BaseCard>
+        </div>
       </li>
     </ul>
-
-    <BaseButton v-if="vouchers.length" to="/booking" class="mt-4" size="lg" block>Pakai saat booking</BaseButton>
   </div>
 </template>
 
@@ -59,7 +62,6 @@ import { dateOnlyExpiryState } from '@/utils/dates'
 import { formatRp, formatDateShort } from '@/utils/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 
@@ -94,3 +96,12 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+/* Potongan tiket di kiri & kanan (mask: tidak memotong focus ring di dalam) */
+.ticket {
+  --notch: 9px;
+  mask: radial-gradient(circle var(--notch) at 0 50%, transparent 98%, black) left / 51% 100% no-repeat,
+        radial-gradient(circle var(--notch) at 100% 50%, transparent 98%, black) right / 51% 100% no-repeat;
+}
+</style>

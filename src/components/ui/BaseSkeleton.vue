@@ -1,3 +1,3 @@
 <template>
-  <div aria-hidden="true" class="skeleton rounded-2xl bg-surface-raised/60" />
+  <div aria-hidden="true" class="skeleton hud-cut-sm bg-surface-raised/60" />
 </template>

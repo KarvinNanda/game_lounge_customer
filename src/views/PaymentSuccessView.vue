@@ -5,8 +5,8 @@
     :message="message"
   >
     <BaseCard v-if="isEvent" class="p-5 text-center">
-      <p class="text-xs text-q-text-3">Event</p>
-      <p class="mt-1 font-display text-xl font-semibold text-q-text">{{ eventName || 'Private Event' }}</p>
+      <p class="hud-label">Event</p>
+      <p class="mt-1 font-display text-xl uppercase text-q-text">{{ eventName || 'Private Event' }}</p>
     </BaseCard>
 
     <BaseCard v-else-if="waiting" class="p-5 text-center" role="status" aria-live="polite">
@@ -15,14 +15,14 @@
     </BaseCard>
 
     <BaseCard v-else-if="bookingCode" class="p-5">
-      <p class="text-center text-xs text-q-text-3">Kode Booking</p>
-      <p class="mt-1 text-center font-display text-3xl font-bold tracking-wider text-q-primary-l tabular-nums">
+      <p class="hud-label text-center">Kode Booking</p>
+      <p class="mt-1 text-center font-mono text-3xl font-semibold tracking-[0.12em] text-q-primary-l tabular-nums">
         {{ bookingCode }}
       </p>
       <BaseButton class="mt-3" variant="ghost" size="sm" block @click="copyCode">
         <Copy class="size-4" aria-hidden="true" /> Salin kode
       </BaseButton>
-      <p class="mt-3 flex gap-2 rounded-xl bg-q-gold/10 p-3 text-xs text-q-gold">
+      <p class="mt-3 flex gap-2 hud-cut-sm bg-q-gold/10 p-3 text-xs text-q-gold">
         <Camera class="size-4 shrink-0" aria-hidden="true" />
         Simpan screenshot halaman ini untuk ditunjukkan ke admin.
       </p>

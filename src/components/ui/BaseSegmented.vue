@@ -5,14 +5,19 @@
       :key="opt.value"
       type="button"
       :aria-pressed="modelValue === opt.value"
-      class="min-h-11 rounded-full border px-4 text-sm font-medium cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-focus-ring"
-      :class="modelValue === opt.value ? 'border-q-primary bg-q-primary/15 text-q-text' : 'border-border-subtle text-q-text-2 hover:border-q-primary/60'"
+      class="group relative isolate min-h-11 px-4 text-sm font-semibold cursor-pointer hud-press hud-focus"
+      :class="modelValue === opt.value ? 'text-q-text drop-shadow-glow' : 'text-q-text-2 hover:text-q-text'"
       @click="emit('update:modelValue', opt.value)"
-    >{{ opt.label }}</button>
+    >
+      <HudFace :tone="modelValue === opt.value ? 'active' : 'default'" cut="sm" hoverable />
+      {{ opt.label }}
+    </button>
   </div>
 </template>
 
 <script setup>
+import HudFace from './HudFace.vue'
+
 defineProps({
   options:    { type: Array, required: true }, // [{ label, value }]
   modelValue: { type: [String, Number, null], default: null },

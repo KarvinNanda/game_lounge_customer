@@ -31,9 +31,12 @@ const mountView = async () => {
 }
 const radio = (w, label) => w.findAll('[role="radio"]').find((r) => r.text().includes(label))
 const payBtn = (w) => w.find('[data-pay-bar] button')
+const states = (w) => w.findAll('section[data-step]').map((s) => s.attributes('data-state'))
+// cabang → paket → "Lanjut" (checkout ?step=pay) → metode bayar
 const choose = async (w) => {
   await radio(w, 'Bekasi').trigger('click'); await flushPromises()
   await radio(w, 'Paket 10 Jam').trigger('click'); await flushPromises()
+  await payBtn(w).trigger('click'); await flushPromises()
   await radio(w, 'QRIS').trigger('click'); await flushPromises()
 }
 
@@ -45,9 +48,17 @@ describe('CreditsView', () => {
     getPlayCreditsPackages.mockResolvedValue(ok(PKGS))
   })
 
-  it('branch → packages → payment as an accordion, with per-hour price and best value badge', async () => {
+  it('packages are locked until a branch is chosen', async () => {
+    const w = await mountView()
+    expect(states(w)).toEqual(['active', 'locked'])
+    expect(w.findAll('section[data-step]')[1].text()).toContain('Pilih cabang dulu')
+    expect(payBtn(w).attributes('disabled')).toBeDefined()
+  })
+
+  it('branch → packages, with per-hour price and best value badge', async () => {
     const w = await mountView()
     await radio(w, 'Bekasi').trigger('click'); await flushPromises()
+    expect(states(w)).toEqual(['done', 'active'])
     expect(getPlayCreditsPackages).toHaveBeenCalledWith('s1')
     expect(w.findAll('section[data-step]')[0].text()).toContain('Bekasi')
     expect(radio(w, 'Paket 10 Jam').text()).toContain('Rp 18.000')
@@ -82,11 +93,26 @@ describe('CreditsView', () => {
     expect(payBtn(w).attributes('disabled')).toBeUndefined()
   })
 
-  it('the desktop pay button is hidden below lg via a wrapper', async () => {
+  it('"Lanjut" opens checkout with "Bayar Sekarang" disabled until a method is chosen', async () => {
     const w = await mountView()
-    await choose(w)
-    const btn = w.findAll('section[data-step] button').find((b) => b.text().includes('Bayar Sekarang'))
-    expect(btn.element.parentElement.classList.contains('hidden')).toBe(true)
+    await radio(w, 'Bekasi').trigger('click'); await flushPromises()
+    await radio(w, 'Paket 10 Jam').trigger('click'); await flushPromises()
+    expect(payBtn(w).text()).toContain('Lanjut')
+    await payBtn(w).trigger('click'); await flushPromises()
+    expect(w.find('[data-checkout="screen"]').exists()).toBe(true)
+    expect(payBtn(w).text()).toContain('Bayar Sekarang')
+    expect(payBtn(w).attributes('disabled')).toBeDefined()
+  })
+
+  it('switching branch after choosing a package resets it and says so', async () => {
+    getPublicStores.mockResolvedValue(ok([{ id: 's1', name: 'Bekasi' }, { id: 's2', name: 'Depok' }]))
+    const w = await mountView()
+    await radio(w, 'Bekasi').trigger('click'); await flushPromises()
+    await radio(w, 'Paket 10 Jam').trigger('click'); await flushPromises()
+    await w.findAll('section[data-step]')[0].find('button[aria-expanded="false"]').trigger('click')
+    await radio(w, 'Depok').trigger('click'); await flushPromises()
+    expect(toast.info).toHaveBeenCalledWith('Paket di-reset')
+    expect(states(w)).toEqual(['done', 'active'])
   })
 
   it('ignores packages from a previously chosen branch that arrive late', async () => {

@@ -47,6 +47,8 @@ const mountAtPayment = async () => {
   w.vm.form.paymentMethod  = 'qris'
   w.vm.selectedSlots       = ['14:00', '15:00', '16:00']
   await nextTick()
+  // Tahap pembayaran di HP = layar checkout (?step=pay)
+  await router.push('/booking?step=pay'); await flushPromises()
   return w
 }
 

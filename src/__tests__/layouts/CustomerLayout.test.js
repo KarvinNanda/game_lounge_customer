@@ -17,4 +17,17 @@ describe('CustomerLayout', () => {
     })
     expect(w.find('main').classes().join(' ')).toContain('env(safe-area-inset-bottom)')
   })
+
+  it('renders the 3 social links inside the desktop footer', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: { template: '<div/>' } }] })
+    await router.push('/'); await router.isReady()
+    const w = mount(CustomerLayout, {
+      global: { plugins: [router, pinia], stubs: { CustomerNavbar: true, BottomNav: true, LoginPromptModal: true } },
+    })
+    const links = w.findAll('footer a[target="_blank"]')
+    expect(links).toHaveLength(3)
+    links.forEach((a) => expect(a.attributes('rel')).toBe('noopener noreferrer'))
+  })
 })

@@ -1,13 +1,13 @@
 <template>
-  <div class="flex items-center justify-between gap-4 mb-3">
-    <h2 class="font-display text-lg md:text-xl font-semibold tracking-tight text-q-text">{{ title }}</h2>
+  <div class="mb-2 flex items-center justify-between gap-4">
+    <h2 class="hud-label">{{ title }}</h2>
     <RouterLink
       v-if="to"
       :to="to"
-      class="inline-flex items-center gap-1 min-h-11 rounded-md text-sm font-medium text-q-primary-l hover:text-q-text transition-colors focus-visible:outline-2 focus-visible:outline-focus-ring"
+      class="hud-label inline-flex min-h-11 items-center gap-1 text-q-primary-l! hover:text-q-text! transition-colors hud-focus"
     >
       {{ linkLabel }}
-      <ChevronRight class="size-4" aria-hidden="true" />
+      <ChevronRight class="size-3.5" aria-hidden="true" />
     </RouterLink>
   </div>
 </template>

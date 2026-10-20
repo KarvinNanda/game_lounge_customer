@@ -110,6 +110,22 @@ describe('MyBookingsView', () => {
     expect(w.text()).not.toContain('BK-7')
   })
 
+  it('the "Aktif" filter asks the server for upcoming and ongoing bookings', async () => {
+    const w = await mountAt(MyBookingsView)
+    const filter = w.find('[role="group"][aria-label="Filter status"]')
+    expect(filter.findAll('button').map((b) => b.text())).toEqual(['Semua', 'Aktif', 'Selesai', 'Batal'])
+    await filter.findAll('button').find((b) => b.text() === 'Aktif').trigger('click'); await flushPromises()
+    expect(getMyBookings).toHaveBeenLastCalledWith({ page: 1, per_page: 20, status: 'upcoming,ongoing' })
+  })
+
+  it('only ongoing bookings offer "Pesan F&B"', async () => {
+    getMyBookings.mockResolvedValue(page([BOOKING, { ...BOOKING, id: 8, booking_code: 'BK-8', status: 'upcoming' }]))
+    const w = await mountAt(MyBookingsView)
+    const rows = w.findAll('li')
+    expect(rows[0].find('a[href^="/fnb-order"]').exists()).toBe(true)
+    expect(rows[1].find('a[href^="/fnb-order"]').exists()).toBe(false)
+  })
+
   it('empty state links to booking', async () => {
     getMyBookings.mockResolvedValue(ok([]))
     const w = await mountAt(MyBookingsView)
@@ -136,6 +152,12 @@ describe('MyCreditsView', () => {
     const bar = w.find('[role="progressbar"]')
     expect(bar.attributes('aria-valuenow')).toBe('6')
     expect(bar.attributes('aria-valuemax')).toBe('10')
+  })
+
+  it('marks a credit that expires tomorrow as danger', async () => {
+    getMyCredits.mockResolvedValue(ok([{ id: 1, package: { name: 'Paket 10' }, remaining_hours: 4, used_hours: 6, total_hours: 10, expires_at: '2026-10-09T12:00:00+07:00' }]))
+    const w = await mountAt(MyCreditsView)
+    expect(w.find('[data-expiry]').attributes('data-expiry')).toBe('danger')
   })
 
   it('empty state links to buying credits', async () => {

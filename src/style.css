@@ -1,7 +1,7 @@
 /* Swiper styles (hero banner) */
 @import 'swiper/css';
 @import 'swiper/css/pagination';
-@import 'swiper/css/autoplay';
+@import 'swiper/css/effect-fade';
 
 @import 'tailwindcss';
 
@@ -35,60 +35,171 @@
   --color-border-subtle:  rgb(6 50 113 / 0.7);
   --color-focus-ring:     #19B9EE;
 
-  --font-sans:    'Inter Variable', system-ui, sans-serif;
-  --font-display: 'Space Grotesk Variable', 'Inter Variable', system-ui, sans-serif;
+  /* HUD Tactical: display = Russo One, body = Chakra Petch, data/label = JetBrains Mono */
+  --font-display: 'Russo One', 'Chakra Petch', system-ui, sans-serif;
+  --font-sans:    'Chakra Petch', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono Variable', ui-monospace, monospace;
 
   --shadow-purple:    0 0 24px rgba(2,130,222,0.35);
   --shadow-purple-sm: 0 0 12px rgba(2,130,222,0.20);
   --shadow-card:      0 4px 32px rgba(0,0,0,0.5);
+  --shadow-glow:      0 0 18px color-mix(in srgb, var(--color-q-primary) 45%, transparent);
+  --shadow-glow-l:    0 0 10px color-mix(in srgb, var(--color-q-primary-l) 70%, transparent);
+
+  /* drop-shadow mengikuti bentuk chamfer (box-shadow tidak) */
+  --drop-shadow-glow:   0 0 10px color-mix(in srgb, var(--color-q-primary) 55%, transparent);
+  --drop-shadow-glow-l: 0 0 8px color-mix(in srgb, var(--color-q-primary-l) 60%, transparent);
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-hud-scan: hud-scan 400ms var(--ease-out-expo) 1 both;
+}
+
+/* ── HUD utilities ─────────────────────────────────────────────
+   clip-path memotong outline & box-shadow luar. Elemen ber-hud-cut
+   TIDAK boleh menjadi pemegang focus ring — taruh ring di wrapper. */
+@utility hud-cut {
+  --hud-cut: 10px;
+  clip-path: polygon(var(--hud-cut) 0, 100% 0, 100% calc(100% - var(--hud-cut)), calc(100% - var(--hud-cut)) 100%, 0 100%, 0 var(--hud-cut));
+}
+@utility hud-cut-sm {
+  --hud-cut: 7px;
+  clip-path: polygon(var(--hud-cut) 0, 100% 0, 100% calc(100% - var(--hud-cut)), calc(100% - var(--hud-cut)) 100%, 0 100%, 0 var(--hud-cut));
+}
+@utility hud-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-q-text-3);
+}
+@utility hud-press {
+  transition: transform 120ms var(--ease-out-expo), box-shadow 150ms ease, border-color 150ms ease, background-color 150ms ease;
+  &:active:not(:disabled) { transform: scale(0.97); }
+}
+@utility hud-grid-bg {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--color-q-primary-l) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--color-q-primary-l) 5%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+@utility hud-hex {
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+/* Input: tidak di-clip (focus ring harus terlihat). 16px supaya iOS tidak zoom. */
+@utility hud-input {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 1rem;
+  color: var(--color-q-text);
+  background-color: color-mix(in srgb, var(--color-q-bg) 70%, transparent);
+  border: 1px solid var(--color-q-border);
+  border-radius: 2px;
+  color-scheme: dark;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  &::placeholder { color: var(--color-q-text-3); }
+  &:focus { outline: none; border-color: var(--color-q-primary-l); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-q-primary) 30%, transparent); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+/* Tombol pilihan (radio/toggle) ber-chamfer. Focus ring digambar DI DALAM elemen
+   (outline-offset negatif), jadi tetap terlihat walau elemen di-clip. */
+@utility hud-option {
+  --hud-cut: 7px;
+  position: relative;
+  clip-path: polygon(var(--hud-cut) 0, 100% 0, 100% calc(100% - var(--hud-cut)), calc(100% - var(--hud-cut)) 100%, 0 100%, 0 var(--hud-cut));
+  background-color: color-mix(in srgb, var(--color-q-card) 85%, transparent);
+  box-shadow: inset 0 0 0 1px var(--color-q-border);
+  color: var(--color-q-text);
+  cursor: pointer;
+  transition: background-color 150ms ease, box-shadow 150ms ease, color 150ms ease, transform 120ms var(--ease-out-expo);
+  &:hover:not(:disabled) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-q-primary) 70%, transparent); }
+  &:active:not(:disabled) { transform: scale(0.97); }
+  &[aria-checked='true'], &[aria-pressed='true'] {
+    background-color: color-mix(in srgb, var(--color-q-primary) 15%, transparent);
+    box-shadow: inset 0 0 0 1px var(--color-q-primary-l), inset 0 0 16px color-mix(in srgb, var(--color-q-primary) 22%, transparent);
+  }
+  &[data-solid][aria-pressed='true'] { background-color: var(--color-q-primary-strong); color: white; }
+  &:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: -4px; }
+  &:disabled {
+    cursor: not-allowed;
+    background-color: transparent;
+    box-shadow: none;
+    outline: 1px dashed var(--color-q-border);
+    outline-offset: -1px;
+    color: color-mix(in srgb, var(--color-q-text-3) 60%, transparent);
+    text-decoration: line-through;
+  }
+}
+@utility hud-focus {
+  &:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
 }
 
 * { box-sizing: border-box; }
 
 body {
-  background: radial-gradient(circle at top right, #0B2350 0%, #010214 40%);
-  background-attachment: fixed;
   background-color: var(--color-q-bg);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--color-q-primary-l) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--color-q-primary-l) 5%, transparent) 1px, transparent 1px),
+    radial-gradient(120% 60% at 50% 0%, color-mix(in srgb, var(--color-q-card2) 70%, transparent) 0%, transparent 60%);
+  background-size: 22px 22px, 22px 22px, auto;
+  background-attachment: fixed;
   color: var(--color-q-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.5;
 }
+
+::selection { background: color-mix(in srgb, var(--color-q-primary) 45%, transparent); color: var(--color-q-text); }
 
 ::-webkit-scrollbar       { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--color-q-card); }
-::-webkit-scrollbar-thumb { background: var(--color-q-primary); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--color-q-primary); }
 
-.swiper-pagination-bullet        { background: rgba(255,255,255,0.35) !important; }
-.swiper-pagination-bullet-active { background: var(--color-q-primary) !important; width: 20px !important; border-radius: 4px !important; }
+/* Hero pagination: bar tipis, bukan titik bulat */
+.swiper-pagination-bullet        { width: 14px !important; height: 3px !important; border-radius: 0 !important; background: color-mix(in srgb, var(--color-q-text) 35%, transparent) !important; opacity: 1 !important; transition: width 200ms var(--ease-out-expo), background-color 200ms ease; }
+.swiper-pagination-bullet-active { width: 24px !important; background: var(--color-q-primary-l) !important; box-shadow: var(--shadow-glow-l); }
 
 /* ── Motion ─────────────────────────────────────────────────── */
 
-/* Page transition (CustomerLayout) */
+/* Page transition (CustomerLayout) — konten langsung bisa diklik */
 .page-enter-active { transition: opacity 200ms var(--ease-out-expo), transform 200ms var(--ease-out-expo); }
-.page-leave-active { transition: opacity 120ms ease; }
-.page-enter-from   { opacity: 0; transform: translateY(8px); }
+.page-leave-active { transition: opacity 100ms ease; }
+.page-enter-from   { opacity: 0; transform: translateY(6px); }
 .page-leave-to     { opacity: 0; }
 
-/* Dropdown / popover */
+/* Dropdown / popover / toast */
 .pop-enter-active { transition: opacity 150ms ease, transform 200ms var(--ease-out-expo); }
 .pop-leave-active { transition: opacity 120ms ease, transform 120ms ease; }
 .pop-enter-from,
 .pop-leave-to     { opacity: 0; transform: translateY(-4px) scale(0.98); }
 
-/* Reveal on scroll (RevealOnScroll.vue) */
-.reveal {
-  opacity: 0;
-  transform: translateY(12px);
-  transition: opacity 450ms var(--ease-out-expo), transform 450ms var(--ease-out-expo);
-  transition-delay: var(--reveal-delay, 0ms);
+/* Bottom sheet (phone) / dialog (desktop) */
+.sheet-enter-active { transition: opacity 200ms ease, transform 200ms var(--ease-out-expo); }
+.sheet-leave-active { transition: opacity 150ms ease, transform 150ms ease; }
+.sheet-enter-from,
+.sheet-leave-to     { opacity: 0; transform: translateY(24px); }
+@media (min-width: 1024px) {
+  .sheet-enter-from,
+  .sheet-leave-to   { transform: scale(0.97); }
 }
-.reveal.is-visible { opacity: 1; transform: none; }
+
+/* Garis "scan" sekali di bawah judul halaman */
+@keyframes hud-scan {
+  from { transform: scaleX(0); opacity: 1; }
+  70%  { opacity: 1; }
+  to   { transform: scaleX(1); opacity: 0.35; }
+}
 
 /* Skeleton shimmer (BaseSkeleton.vue) */
 @keyframes shimmer {
@@ -101,13 +212,6 @@ body {
   animation: shimmer 1.6s linear infinite;
 }
 
-/* Hero Ken Burns — hanya slide aktif */
-@keyframes ken-burns {
-  from { transform: scale(1); }
-  to   { transform: scale(1.05); }
-}
-.swiper-slide-active .hero-kenburns { animation: ken-burns 8s ease-out forwards; }
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -115,5 +219,4 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  .reveal { opacity: 1; transform: none; }
 }

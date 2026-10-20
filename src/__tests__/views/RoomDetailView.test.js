@@ -64,4 +64,14 @@ describe('RoomDetailView', () => {
     const { w } = await mountView(true)
     expect(w.text()).toContain('Ruangan tidak ditemukan')
   })
+
+  it('the booking CTA is disabled with "Pilih cabang dulu" until a branch is picked', async () => {
+    const { w } = await mountView(true)
+    const cta = () => w.findAll('button').find((b) => b.text().includes('Booking Sekarang'))
+    expect(cta().attributes('disabled')).toBeDefined()
+    expect(w.text()).toContain('Pilih cabang dulu')
+    await w.find('[role="radio"]').trigger('click'); await flushPromises()
+    expect(cta().attributes('disabled')).toBeUndefined()
+    expect(w.text()).not.toContain('Pilih cabang dulu')
+  })
 })

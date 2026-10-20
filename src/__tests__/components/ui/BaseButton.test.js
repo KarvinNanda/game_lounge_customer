@@ -37,8 +37,22 @@ describe('BaseButton', () => {
   it('is not disabled when neither loading nor disabled', () => {
     expect(mountBtn().attributes('disabled')).toBeUndefined()
   })
-  it('primary variant uses the AA-contrast background token', () => {
-    expect(mountBtn().classes()).toContain('bg-q-primary-strong')
+  it('primary variant uses the AA-contrast background token on its face', () => {
+    expect(mountBtn().find('[data-face]').classes()).toContain('bg-q-primary-strong')
+  })
+  it('focus ring is not on a clip-path element', () => {
+    const w = mountBtn()
+    expect(w.classes()).not.toContain('hud-cut')
+    expect(w.classes()).not.toContain('hud-cut-sm')
+    expect(w.classes()).toContain('hud-focus')
+  })
+  it('class="hidden lg:flex" actually hides it (no forced inline-flex)', () => {
+    const w = mount(BaseButton, { attrs: { class: 'hidden lg:flex' }, slots: { default: 'x' }, global: { plugins: [router] } })
+    expect(w.classes()).toContain('hidden')
+    expect(w.classes()).not.toContain('inline-flex')
+  })
+  it('renders inline-flex when no display class is passed', () => {
+    expect(mountBtn().classes()).toContain('inline-flex')
   })
   it('meets the 44px touch target', () => {
     expect(mountBtn({ size: 'sm' }).classes()).toContain('min-h-11')

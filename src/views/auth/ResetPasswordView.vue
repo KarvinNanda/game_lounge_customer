@@ -5,14 +5,14 @@
     </div>
 
     <div v-else-if="state === 'invalid'" role="alert" class="space-y-4 text-sm text-q-text-2">
-      <p class="flex gap-2 rounded-xl bg-q-red/10 p-3 text-q-red">
+      <p class="flex gap-2 hud-cut-sm bg-q-red/10 p-3 text-q-red">
         <LinkIcon class="size-5 shrink-0" aria-hidden="true" /> Link reset tidak valid atau sudah kedaluwarsa.
       </p>
       <BaseButton to="/forgot-password" block>Minta link baru</BaseButton>
     </div>
 
     <div v-else-if="state === 'done'" role="status" class="space-y-4">
-      <p class="flex gap-2 rounded-xl bg-q-green/10 p-3 text-sm text-q-text">
+      <p class="flex gap-2 hud-cut-sm bg-q-green/10 p-3 text-sm text-q-text">
         <CircleCheck class="size-5 shrink-0 text-q-green" aria-hidden="true" /> Password berhasil diubah. Silakan login dengan password baru.
       </p>
       <BaseButton to="/login" size="lg" block>Login sekarang</BaseButton>
@@ -20,14 +20,14 @@
 
     <form v-else class="space-y-4" novalidate @submit.prevent="handleReset">
       <div>
-        <label for="reset-new" class="mb-1.5 block text-sm font-medium text-q-text-2">Password baru</label>
+        <label for="reset-new" class="mb-1.5 block text-xs font-semibold text-q-text-2">Password baru</label>
         <PasswordInput id="reset-new" v-model="form.new_password" autocomplete="new-password" />
       </div>
       <div>
-        <label for="reset-confirm" class="mb-1.5 block text-sm font-medium text-q-text-2">Konfirmasi password baru</label>
+        <label for="reset-confirm" class="mb-1.5 block text-xs font-semibold text-q-text-2">Konfirmasi password baru</label>
         <PasswordInput id="reset-confirm" v-model="form.confirm_password" autocomplete="new-password" />
       </div>
-      <p v-if="formError" role="alert" class="rounded-xl bg-q-red/10 px-3 py-2 text-center text-sm text-q-red">{{ formError }}</p>
+      <p v-if="formError" role="alert" class="hud-cut-sm bg-q-red/10 px-3 py-2 text-center text-sm text-q-red">{{ formError }}</p>
       <BaseButton type="submit" size="lg" block :loading="saving">Simpan password</BaseButton>
     </form>
   </AuthShell>

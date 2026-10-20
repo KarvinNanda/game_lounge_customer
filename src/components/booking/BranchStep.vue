@@ -1,27 +1,22 @@
 <template>
-  <div role="radiogroup" aria-label="Cabang" class="space-y-2" @keydown="onRadioKeydownManual">
-    <div
-      v-for="(store, i) in stores"
-      :key="store.id"
-      class="flex items-center gap-3 rounded-xl border p-3 transition-colors"
-      :class="store.id === modelValue ? 'border-q-primary bg-q-primary/10' : 'border-border-subtle hover:border-q-primary/60'"
-    >
+  <div role="radiogroup" aria-label="Cabang" class="grid gap-1.5" @keydown="onRadioKeydownManual">
+    <div v-for="(store, i) in stores" :key="store.id" class="flex min-w-0 items-stretch gap-1.5">
       <button
         type="button"
         role="radio"
         :aria-checked="store.id === modelValue"
         :tabindex="radioTabindex(store.id === modelValue, i, stores.some((s) => s.id === modelValue))"
-        class="flex flex-1 min-w-0 items-center gap-3 text-left cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-focus-ring"
+        class="hud-option flex min-w-0 flex-1 items-center gap-2.5 p-2.5 text-left"
         @click="emit('select', store.id)"
       >
-        <img v-if="store.photo_url" :src="getImgUrl(store.photo_url)" alt="" class="size-12 rounded-lg object-cover shrink-0" />
-        <span v-else class="size-12 shrink-0 rounded-lg bg-surface-raised flex items-center justify-center text-q-text-3">
+        <img v-if="store.photo_url" :src="getImgUrl(store.photo_url)" alt="" class="hud-cut-sm size-10 shrink-0 object-cover" />
+        <span v-else class="hud-cut-sm flex size-10 shrink-0 items-center justify-center bg-surface-raised text-q-text-3">
           <Building2 class="size-5" aria-hidden="true" />
         </span>
         <span class="min-w-0">
-          <span class="block text-sm font-semibold text-q-text">{{ store.name }}</span>
-          <span class="block text-xs text-q-text-3 line-clamp-1">{{ store.address }}</span>
-          <span v-if="hoursOf(store)" class="mt-0.5 flex items-center gap-1 text-xs text-q-green">
+          <span class="block truncate text-sm font-semibold">{{ store.name }}</span>
+          <span class="block truncate text-xs text-q-text-3">{{ store.address }}</span>
+          <span v-if="hoursOf(store)" class="mt-0.5 flex items-center gap-1 font-mono text-[11px] text-q-green">
             <Clock class="size-3" aria-hidden="true" /> {{ hoursOf(store) }}
           </span>
         </span>
@@ -32,7 +27,7 @@
         target="_blank"
         rel="noopener noreferrer"
         :aria-label="`Buka ${store.name} di Maps`"
-        class="size-11 shrink-0 flex items-center justify-center rounded-full text-q-primary-l hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-focus-ring"
+        class="hud-option flex w-11 shrink-0 items-center justify-center text-q-primary-l"
       >
         <MapPin class="size-5" aria-hidden="true" />
       </a>

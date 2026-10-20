@@ -7,18 +7,20 @@
     :aria-busy="loading || undefined"
     :class="classes"
   >
+    <HudFace :tone="FACE[variant]" cut="sm" hoverable />
     <Loader2 v-if="loading" class="size-4 animate-spin" aria-hidden="true" />
     <slot />
   </component>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Loader2 } from 'lucide-vue-next'
+import HudFace from './HudFace.vue'
 
 const props = defineProps({
-  variant:  { type: String, default: 'primary', validator: (v) => ['primary', 'secondary', 'ghost'].includes(v) },
+  variant:  { type: String, default: 'primary', validator: (v) => ['primary', 'secondary', 'ghost', 'danger'].includes(v) },
   size:     { type: String, default: 'md',      validator: (v) => ['sm', 'md', 'lg'].includes(v) },
   to:       { type: [String, Object], default: null },
   type:     { type: String, default: 'button' },
@@ -27,10 +29,15 @@ const props = defineProps({
   block:    Boolean,
 })
 
-const VARIANTS = {
-  primary:   'bg-q-primary-strong text-white shadow-purple-sm hover:bg-q-primary-d hover:shadow-purple',
-  secondary: 'bg-surface-raised text-q-text border border-border-subtle hover:border-q-primary',
-  ghost:     'text-q-text-2 hover:text-q-text hover:bg-white/5',
+const attrs = useAttrs()
+
+const FACE = { primary: 'primary', secondary: 'raised', ghost: 'ghost', danger: 'danger' }
+
+const TEXT = {
+  primary:   'text-white hover:drop-shadow-glow',
+  secondary: 'text-q-text',
+  ghost:     'text-q-text-2 hover:text-q-text',
+  danger:    'text-q-red',
 }
 
 const SIZES = {
@@ -39,12 +46,17 @@ const SIZES = {
   lg: 'min-h-12 px-6 text-base',
 }
 
+// Pemanggil yang memberi utility display sendiri (mis. `hidden lg:flex`) tidak boleh
+// dikalahkan oleh inline-flex bawaan — dulu ini jebakan.
+const DISPLAY = /(^|\s)(hidden|block|flex|inline-flex|grid|inline-block|contents)(\s|$)/
+const hasOwnDisplay = computed(() => DISPLAY.test(String(attrs.class ?? '')))
+
 const classes = computed(() => [
-  'inline-flex items-center justify-center gap-2 rounded-xl font-semibold cursor-pointer select-none',
-  'transition-[background-color,box-shadow,border-color,color,transform] duration-200 ease-out-expo active:scale-[0.98]',
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring',
-  'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
-  VARIANTS[props.variant],
+  !hasOwnDisplay.value && 'inline-flex',
+  'group relative isolate items-center justify-center gap-2 font-semibold tracking-wide cursor-pointer select-none',
+  'hud-press hud-focus',
+  'disabled:opacity-50 disabled:cursor-not-allowed',
+  TEXT[props.variant],
   SIZES[props.size],
   props.block && 'w-full',
 ])

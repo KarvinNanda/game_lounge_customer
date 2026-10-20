@@ -7,7 +7,7 @@
   >
     <div role="radiogroup" aria-label="Voucher" class="divide-y divide-border-subtle" @keydown="onRadioKeydown">
       <button type="button" role="radio" :aria-checked="!selected" :tabindex="selectedInList ? -1 : 0" :class="ROW" @click="pick(null)">
-        <span class="size-9 shrink-0 rounded-lg bg-white/5 text-q-text-3 flex items-center justify-center">
+        <span class="hud-cut-sm size-9 shrink-0 bg-white/5 text-q-text-3 flex items-center justify-center">
           <Ban class="size-5" aria-hidden="true" />
         </span>
         <span class="flex-1">
@@ -27,7 +27,7 @@
         :class="ROW"
         @click="pick(v)"
       >
-        <span class="size-9 shrink-0 rounded-lg bg-q-gold/15 text-q-gold flex items-center justify-center">
+        <span class="hud-cut-sm size-9 shrink-0 bg-q-gold/15 text-q-gold flex items-center justify-center">
           <TicketPercent class="size-5" aria-hidden="true" />
         </span>
         <span class="flex-1 min-w-0">

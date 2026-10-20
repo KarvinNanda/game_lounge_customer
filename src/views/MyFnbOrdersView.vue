@@ -1,8 +1,8 @@
 <template>
-  <div class="mx-auto max-w-2xl px-4 sm:px-6 py-6">
+  <div class="mx-auto max-w-6xl px-4 pt-4 pb-6 sm:px-6">
     <PageHeader title="Pesanan F&B" subtitle="Status pesanan makanan & minuman kamu" back />
 
-    <div v-if="loading" class="space-y-2" aria-busy="true">
+    <div v-if="loading" class="grid gap-2 lg:grid-cols-2" aria-busy="true">
       <BaseSkeleton v-for="i in 3" :key="i" class="h-28" />
     </div>
 
@@ -10,11 +10,11 @@
       <BaseButton to="/my-bookings" variant="secondary">Ke My Bookings</BaseButton>
     </BaseEmptyState>
 
-    <ul v-else class="space-y-2">
+    <ul v-else class="grid gap-2 lg:grid-cols-2">
       <li v-for="order in orders" :key="order.id">
-        <BaseCard class="p-4">
+        <HudPanel class="h-full p-3.5">
           <div class="mb-2 flex items-center justify-between gap-3">
-            <span class="text-xs text-q-text-3">{{ formatDateTime(order.created_at) }}</span>
+            <span class="font-mono text-xs text-q-text-3">{{ formatDateTime(order.created_at) }}</span>
             <StatusBadge kind="fnb" :status="order.status" />
           </div>
           <ul class="space-y-1 text-sm">
@@ -30,7 +30,7 @@
             <span class="text-q-text-3">Total · bayar di kasir</span>
             <span class="font-semibold text-q-gold tabular-nums">{{ formatRp(order.total_amount) }}</span>
           </div>
-        </BaseCard>
+        </HudPanel>
       </li>
     </ul>
   </div>
@@ -43,7 +43,7 @@ import { getMyFnbOrders } from '@/api/fnbApi'
 import { formatRp } from '@/utils/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import BaseCard from '@/components/ui/BaseCard.vue'
+import HudPanel from '@/components/ui/HudPanel.vue'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
