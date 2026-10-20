@@ -16,7 +16,7 @@ Customer-facing frontend for **Quantum Gaming Center**: game lounge room booking
 | Axios | ^1.16 | HTTP client (cookie auth, `withCredentials`) |
 | lucide-vue-next | ^1.0 | Icons (no emoji used as icons) |
 | Swiper.js | ^12.1 | Hero banner slider |
-| Inter + Space Grotesk | fontsource | Self-hosted fonts, no Google Fonts |
+| Russo One + Chakra Petch + JetBrains Mono | fontsource | Self-hosted fonts (display / body / data), no Google Fonts |
 | Vitest + @vue/test-utils + jsdom | ^4.1 / ^2.4 | Unit & component tests |
 | Node.js | 22 (CI), 18 minimum | Runtime |
 
@@ -52,7 +52,7 @@ cp .env.example .env.local   # .env.local is gitignored
 
 Every `VITE_*` value is baked into the browser bundle, so **never put secrets in them**.
 
-The local backend is expected at `localhost:8080`. The login cookie is set by the backend, so the frontend origin must be allowed by the backend's CORS config.
+The local backend listens on `localhost:8080` by default (`APP_PORT`). If it runs on another port (for example because 8080 is taken), point `VITE_API_URL` at that port and restart `npm run dev`; Vite reads env values only at startup. The login cookie is set by the backend, so the frontend origin must be allowed by the backend's CORS config.
 
 ---
 
@@ -74,7 +74,12 @@ Runs on every push and PR to `main`: `npm ci` → `npm audit --omit=dev --audit-
 ### Layout & Routing
 
 - `src/main.js` installs Pinia + Router and mounts to `#app`. Components are imported locally; there is no global registration.
-- Every page except the auth pages uses `src/layouts/CustomerLayout.vue`: `CustomerNavbar` (sticky, desktop nav + notification bell), `RouterView`, and `BottomNav` (mobile only, with iPhone safe area).
+- Every page except the auth pages uses `src/layouts/CustomerLayout.vue`: `CustomerNavbar`, `RouterView`, `SiteFooter` (desktop only) and `BottomNav` (below `lg`, with iPhone safe area).
+- Breakpoint: the phone layout is used below `lg` (1024px); desktop starts at `lg`.
+  - `CustomerNavbar` on phone is a 52px top bar: logo, credits chip, notification bell and avatar menu.
+  - From `lg` it adds the center links Home · Booking · My Bookings · Play Credits · Promo.
+  - For guests, protected links open `LoginPromptModal` instead of navigating.
+- `BottomNav` (phone): Home · My Bookings · **Booking** (raised hexagon in the center) · Credits · Promo. Profile is reached from the avatar menu.
 - `src/router/guard.js` → `authGuard` for routes with `meta.requiresAuth`:
   - in-app navigation → opens `LoginPromptModal`, the user stays on the current page;
   - first load from a URL (shared link, returning from the payment gateway) → `/login?redirect=<path>`.
@@ -114,6 +119,11 @@ Runs on every push and PR to `main`: `npm ci` → `npm audit --omit=dev --audit-
 | `useCart.js` | F&B cart |
 | `useFocusTrap.js` | Focus trap for modals and sheets |
 | `useToast.js` | Toast singleton (`success` / `error` / `info` / `warning`), rendered by `ToastContainer` |
+| `useCheckoutStep.js` | Phone checkout state as `?step=pay` (hardware back returns to the steps; an incomplete form drops the param; scrolls to top) |
+| `useMediaQuery.js` | Reactive `matchMedia`; returns `false` without `matchMedia` (jsdom), so tests render the phone layout |
+| `useCreditsSummary.js` | Shared total of active credit hours for the navbar chip and Home; one request at a time; stale responses from a previous session are dropped |
+| `useCountUp.js` | One-time count-up of a number for display only (accessible labels use the real value; off under reduced motion) |
+| `useActiveSession.js` | Home session card: the `ongoing` booking first, otherwise the nearest `upcoming` one |
 
 ### Utils (`src/utils/`)
 
@@ -122,29 +132,72 @@ Runs on every push and PR to `main`: `npm ci` → `npm audit --omit=dev --audit-
 | `payment.js` | `redirectToInvoice` (the only way to an invoice; host is validated), `mockPaymentGuard`, countdown from `expires_at` |
 | `security.js` | `sanitizeRedirect`, `safeJsonParse`, `getImgUrl`, payment host allowlist |
 | `dates.js` | `localISODate` (do not use `toISOString` for local dates), `dateOnlyExpiryState` |
-| `format.js` | `formatRp`, date formats, capacity |
+| `format.js` | `formatRp`, `formatRpShort` (15RB, 1.5JT), `formatDayLabel` (Hari ini / Besok / Sab, 24 Okt), date formats, capacity |
+| `fnb.js` | `fnbOrderLink(booking)`: link to F&B ordering for an ongoing booking |
 | `slots.js` | Hour slot selection (slots must be consecutive) |
 | `voucher.js` | Voucher discount estimate based on the server's `total_price` |
 | `radioKeys.js` | Keyboard navigation for radio groups |
 
 ---
 
-## Design System
+## Design System: "HUD Tactical"
 
-- Color, font, shadow, and easing tokens are defined **only** in `@theme` in `src/style.css`. Views never use raw hex values.
-- Theme: dark blue. Main tokens: `q-bg`, `q-card`, `q-card2`, `q-border`, `q-primary` (accent), `q-primary-strong` (background of buttons with text, 5.3:1 contrast), `q-primary-l`, `q-gold`, `q-green`, `q-red`, `q-text` / `q-text-2` / `q-text-3`, `surface`, `surface-raised`, `border-subtle`, `focus-ring`.
-- Fonts: `font-sans` = Inter Variable, `font-display` = Space Grotesk Variable.
-- Animations are disabled automatically under `prefers-reduced-motion: reduce` (a global rule in `style.css`).
+The full design spec is kept outside the repo (private draft). The rules that matter in code:
+
+- **Tokens:** color, font, shadow, drop-shadow and easing tokens are defined **only** in `@theme` in `src/style.css`. Views never use raw hex values (a test enforces this). The colors are locked: new tokens may only be alpha or gradient variants of the existing ones.
+- **Main tokens:** `q-bg`, `q-card`, `q-card2`, `q-border`, `q-primary` (accent), `q-primary-strong` (background of buttons with text, 5.3:1 contrast), `q-primary-l`, `q-gold`, `q-green`, `q-red`, `q-text` / `q-text-2` / `q-text-3`, `surface`, `surface-raised`, `border-subtle`, `focus-ring`.
+- **Fonts:**
+  - `font-display` = Russo One (titles, big numbers; uppercase);
+  - `font-sans` = Chakra Petch (body);
+  - `font-mono` = JetBrains Mono (codes, times, HUD labels).
+  - Body text is at least 14px. Form labels and hints are at least 12px. Only short decorative HUD labels go below that.
+- **Shape:** chamfered corners via `clip-path`. **`clip-path` also clips outlines and outer shadows**, so:
+  - Panels and buttons draw the chamfered background on a child (`HudFace`), and the focusable parent stays unclipped and holds the focus ring.
+  - Radio/toggle options use the `hud-option` utility. It draws the focus outline *inside* the element (`outline-offset: -4px`) and styles itself from `aria-checked` / `aria-pressed` (`data-solid` gives a solid selected state).
+  - Inputs use `hud-input` (16px so iOS Safari does not zoom; never clipped).
+- **Utilities in `style.css`:** `hud-cut`, `hud-cut-sm`, `hud-hex`, `hud-label`, `hud-press`, `hud-focus`, `hud-option`, `hud-input`.
+- **Motion:**
+  - Feedback takes ≤ 200ms and entrances ≤ 300ms, and nothing blocks input.
+  - There are no looping effects and no scroll-reveal.
+  - Everything is disabled under `prefers-reduced-motion: reduce` (a global rule in `style.css`).
+- **Status** is always shown as color + icon + text (`StatusBadge`).
 
 ### UI Components (`src/components/ui/`)
 
-`BaseButton`, `BaseCard`, `BaseBadge`, `BaseSheet` (bottom sheet), `BaseSegmented`, `BaseSkeleton`, `BaseEmptyState`, `PageHeader`, `SectionHeader`, `ResultScreen` (success/failure pages), `StatusBadge`, `PasswordInput`, `RevealOnScroll`.
+- `HudPanel`: chamfered panel. Props: `tag`, `interactive`, `brackets`, `tone`, `cut`.
+- `HudFace`: the clipped background used inside panels and buttons.
+- `HudLabel`: small mono label.
+- `BaseButton`: variants `primary`, `secondary`, `ghost`, `danger`.
+- `BaseCard`: alias of `HudPanel`.
+- `BaseBadge`.
+- `BaseSheet`: bottom sheet on phone, centered dialog from `lg`.
+- `BaseSegmented`.
+- `BaseSkeleton`.
+- `BaseEmptyState`.
+- `PageHeader`: the title draws a one-time scan line.
+- `SectionHeader`.
+- `ResultScreen`: success/failure pages.
+- `StatusBadge`.
+- `PasswordInput`.
 
-> **Gotcha:** `BaseButton` always applies `inline-flex`, so `class="hidden lg:flex"` on a BaseButton does not hide it. Wrap it in `<div class="hidden lg:block">` instead.
+> **Gotchas:**
+> - `BaseButton` respects a display class you pass (`class="hidden lg:flex"` works).
+> - `BaseBadge` still forces `inline-flex`, so wrap it in a `<div class="hidden lg:block">` to hide it at a breakpoint.
 
-### Multi-step flow pattern
+### Multi-step flow pattern (`src/components/flow/`)
 
-Booking, Credits, and Private Event use an **accordion stepper** (`components/booking/BookingStep.vue`): one step is open, and completed steps collapse into a summary with an "Ubah" (edit) button. On mobile, the pay button lives in a **sticky bar** above `BottomNav`.
+Booking, Top Up Credits and Private Event use a **one-screen, sequentially locked flow**. The business requires the order (for Booking: Branch → Room → Date → Time).
+
+- `useFlowSteps(count, current)` gives every step a state: `locked`, `active` or `done`.
+  - Steps after the current one are locked: a dashed placeholder says what unlocks them, and Tab skips them.
+  - Done steps collapse to a summary with "Ubah".
+  - The **last step stays open** after it is complete, so several hours can be picked.
+- Changing an earlier step resets the later ones (logic in the composables) and shows a toast ("Ruangan & jam di-reset"). Re-picking the same value resets nothing.
+- `FlowStep` renders one step with its rail node. `FlowProgress` shows `n/N` or `READY`.
+- **Phone:**
+  - `PayBar` sits above `BottomNav`. It shows the live price and "Lanjut"; when Lanjut is disabled, the bar says why ("Lengkapi N langkah lagi").
+  - "Lanjut" opens `CheckoutShell mode="screen"` via `?step=pay`, where the final button is "Bayar Sekarang".
+- **Desktop:** `CheckoutShell mode="panel"` is a sticky right panel with the summary, the payment options and "Bayar Sekarang".
 
 ---
 
@@ -181,7 +234,10 @@ webhook to backend                       POST .../mock-confirm
 
 ### Room Booking (`/booking`)
 
-Accordion: Branch → Room → Date → Time → Payment.
+Locked steps: Branch → Room → Date → Time, then checkout (`?step=pay` on phone, right panel on desktop).
+
+- The date step shows a 7-day strip ("Hari ini", "Besok", …) plus a calendar cell for later dates.
+- Rooms show 4 at a time, with "+N lainnya" for the rest.
 
 - Time slots must be consecutive.
 - Prices always come from the server (`GET /public/booking/quote`), including multi-hour packages, happy hour, and flash sales. The on-screen voucher discount is only an estimate; the final amount comes from initiate.
@@ -200,7 +256,7 @@ Accordion: Branch → Room → Date → Time → Payment.
 
 ### Private Event (`/event-booking`)
 
-Rent a whole branch. Accordion: Branch → Schedule → Event Details → Payment.
+Rent a whole branch. Locked steps: Branch → Schedule (must be available) → Event Details, then checkout.
 
 - Availability **and** price come from `GET /public/event-booking/quote?store_id&booking_date&start_time&end_time` → `{ duration_hours, price_per_day, total_price, available }`.
 - `total_price` is the amount that will be charged (rounded to Rp1,000 on the server), so the frontend does not recompute it.
@@ -224,7 +280,9 @@ Rent a whole branch. Accordion: Branch → Schedule → Event Details → Paymen
 | Mock confirm | `POST /customer/play-credits/purchase/:id/mock-confirm` |
 | Active + expiring credits | `GET /customer/credits/expiring` |
 
-`CustomerNavbar` polls `GET /customer/credits/expiring` every 5 minutes for the notification badge.
+Top Up uses locked steps: Branch → Package, then checkout.
+
+`CustomerNavbar` polls `GET /customer/credits/expiring` every 5 minutes for the notification badge. The credits chip (`GET /customer/my-credits`) refreshes on login, on `/payment/success`, `/credits/success` and `/my-credits`.
 
 ### F&B (`/fnb-order`, `/my-fnb-orders`)
 
@@ -274,7 +332,7 @@ Order food & drinks for a booking that is in progress (`status = ongoing`). The 
 | `/forgot-password` | `ForgotPasswordView` | public |
 | `/reset-password/:token` | `ResetPasswordView` | public |
 
-Bottom nav (mobile): Home · My Booking · My Credits · Promo · Profil.
+Bottom nav (phone, below `lg`): Home · My Bookings · Booking (center) · Credits · Promo. Profile is in the avatar menu.
 
 ---
 
@@ -285,18 +343,21 @@ src/
 ├── api/                  # Axios instances (index.js) + one file per domain
 ├── assets/               # Logo
 ├── components/
-│   ├── auth/             # AuthShell (layout for login / forgot / reset password)
-│   ├── booking/          # Accordion steps, slot grid, price summary, voucher sheet, payment picker
-│   ├── ui/               # Design system base components
+│   ├── auth/             # AuthShell + AuthBrand (login / forgot / reset password)
+│   ├── booking/          # Branch, room, date strip, slot grid, price summary, voucher sheet, payment picker
+│   ├── flow/             # Locked-step flow: useFlowSteps, FlowStep, FlowProgress, PayBar, CheckoutShell
+│   ├── ui/               # Design system base components (HudPanel, HudFace, HudLabel, Base*)
 │   ├── CustomerNavbar.vue
 │   ├── BottomNav.vue
+│   ├── SiteFooter.vue    # Desktop footer
+│   ├── SocialLinks.vue   # Instagram / TikTok / YouTube links (footer + profile)
 │   ├── LoginPromptModal.vue
 │   └── ToastContainer.vue
 ├── composables/          # Page logic & shared state
 ├── layouts/              # CustomerLayout
 ├── router/               # index.js, guard.js, scroll.js
 ├── stores/               # authStore (Pinia)
-├── utils/                # payment, security, dates, format, slots, voucher, radioKeys
+├── utils/                # payment, security, dates, format, fnb, slots, voucher, radioKeys
 ├── views/                # Pages (+ auth/, banner/)
 ├── __tests__/            # Unit & component tests (mirrors src/)
 ├── test/setup.js         # Global test setup: localStorage, window.location stub, clipboard
