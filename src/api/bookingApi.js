@@ -10,6 +10,9 @@ export const getBookingSlots          = (params)  => publicApi.get('/public/book
 // Harga final (paket multi-jam, happy hour, flash sale) — logika sama dengan /bookings/initiate.
 // Axios mengirim array sebagai selected_slots[]=10:00&selected_slots[]=11:00 (format yang diminta backend)
 export const getBookingQuote          = (params)  => publicApi.get('/public/booking/quote', { params })
+// Sama dengan quote publik + voucher_id opsional, wajib login. total_price = sebelum voucher,
+// final_price = yang dibayar (sama dengan /bookings/initiate), discount_amount = potongan.
+export const getCustomerBookingQuote  = (params)  => api.get('/customer/bookings/quote', { params })
 // Keep legacy for backward compat if needed
 export const getAvailability          = (params)  => publicApi.get('/public/booking/availability', { params })
 

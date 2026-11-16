@@ -11,6 +11,7 @@ vi.mock('@/api/authApi', () => ({ getCustomerMe: vi.fn(), getMyCredits: vi.fn() 
 vi.mock('@/api/bookingApi', () => ({
   getPublicStores: vi.fn(), getPublicRoomTemplates: vi.fn(), getBookingSlots: vi.fn(),
   getMyVouchersForBooking: vi.fn(), initiateBooking: vi.fn(), getBookingQuote: vi.fn(),
+  getCustomerBookingQuote: vi.fn(),
 }))
 
 import * as api from '@/api/bookingApi'
@@ -20,9 +21,9 @@ import { useBookingForm } from '@/composables/useBookingForm'
 const ok = (data) => ({ data: { data } })
 const slots = (...ts) => ts.map((t) => ({ start_time: t, end_time: t, available: true, price: 1 }))
 
-const setup = async () => {
+const setup = async ({ guest = false } = {}) => {
   const pinia = createPinia(); setActivePinia(pinia)
-  useAuthStore().setAuth({ name: 'A', type: 'member' })
+  if (!guest) useAuthStore().setAuth({ name: 'A', type: 'member' })
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: { template: '<div/>' } }] })
   await router.push('/'); await router.isReady()
   let b
@@ -38,6 +39,7 @@ describe('useBookingForm', () => {
     api.getPublicRoomTemplates.mockResolvedValue(ok([]))
     api.getMyVouchersForBooking.mockResolvedValue(ok([]))
     api.getBookingQuote.mockResolvedValue(ok({ total_price: 1, available: true }))
+    api.getCustomerBookingQuote.mockResolvedValue(ok({ total_price: 1, available: true }))
   })
   afterEach(() => { vi.useRealTimers() })
 
@@ -113,5 +115,73 @@ describe('useBookingForm', () => {
     b.selectCredit({ id: 'c1' })
     expect(b.selectedVoucher.value).toBeNull()
     expect(b.form.voucherID).toBe('')
+  })
+
+  // Harga dengan voucher dihitung server (GET /customer/bookings/quote), tidak di FE lagi
+  describe('server-side voucher price', () => {
+    const atSlots = async (opts) => {
+      vi.useFakeTimers()
+      api.getBookingSlots.mockResolvedValue(ok({ slots: slots('10:00') }))
+      const b = await setup(opts)
+      Object.assign(b.form, { storeId: 's', roomTemplateId: 1, date: '2026-10-08' })
+      b.onDateChange(); await flushPromises()
+      b.toggleSlot('10:00')
+      await vi.advanceTimersByTimeAsync(300); await flushPromises()
+      return b
+    }
+    const QUOTED = { total_price: 33333, discount_amount: 5000, final_price: 28333, voucher_id: 'v1', voucher_code: 'HEMAT15', available: true }
+
+    it('logged in: asks the customer quote with the selected voucher and shows its numbers', async () => {
+      const b = await atSlots()
+      expect(api.getCustomerBookingQuote).toHaveBeenLastCalledWith({
+        store_id: 's', room_template_id: 1, booking_date: '2026-10-08', selected_slots: ['10:00'],
+      })
+      api.getCustomerBookingQuote.mockResolvedValue(ok(QUOTED))
+      b.onSelectVoucher({ voucher_id: 'v1', code: 'HEMAT15' })
+      await vi.advanceTimersByTimeAsync(300); await flushPromises()
+      expect(api.getCustomerBookingQuote).toHaveBeenLastCalledWith(expect.objectContaining({ voucher_id: 'v1' }))
+      expect(b.discountAmount.value).toBe(5000)
+      expect(b.payableAmount.value).toBe(28333)
+      expect(api.getBookingQuote).not.toHaveBeenCalled()
+    })
+
+    it('guest: uses the public quote, payable = total_price', async () => {
+      api.getBookingQuote.mockResolvedValue(ok({ total_price: 68000, available: true }))
+      const b = await atSlots({ guest: true })
+      expect(api.getBookingQuote).toHaveBeenCalled()
+      expect(api.getCustomerBookingQuote).not.toHaveBeenCalled()
+      expect(b.discountAmount.value).toBe(0)
+      expect(b.payableAmount.value).toBe(68000)
+    })
+
+    it('a voucher the server rejects (400) is removed, the reason shown, and the price asked again without it', async () => {
+      const b = await atSlots()
+      api.getCustomerBookingQuote.mockImplementation((p) => (p.voucher_id
+        ? Promise.reject({ response: { status: 400, data: { message: 'Minimum pembelian Rp 50000' } } })
+        : Promise.resolve(ok({ total_price: 33333, discount_amount: 0, final_price: 33333, available: true }))))
+      b.onSelectVoucher({ voucher_id: 'v1', code: 'HEMAT15' })
+      await vi.advanceTimersByTimeAsync(300); await flushPromises()
+      expect(toast.error).toHaveBeenCalledWith('Minimum pembelian Rp 50000')
+      expect(b.form.voucherID).toBe('')
+      expect(b.selectedVoucher.value).toBeNull()
+      await vi.advanceTimersByTimeAsync(300); await flushPromises()
+      expect(api.getCustomerBookingQuote).toHaveBeenLastCalledWith(expect.not.objectContaining({ voucher_id: expect.anything() }))
+      expect(b.payableAmount.value).toBe(33333)
+      expect(b.quoteError.value).toBe('')
+    })
+
+    it.each([
+      ['a network error', new Error('Network Error')],
+      ['an expired session (401)', { response: { status: 401, data: { message: 'Unauthorized' } } }],
+      ['a server error (500)', { response: { status: 500, data: { message: 'x' } } }],
+    ])('%s keeps the voucher (it may be fine), the user can retry', async (_, err) => {
+      const b = await atSlots()
+      api.getCustomerBookingQuote.mockRejectedValue(err)
+      b.onSelectVoucher({ voucher_id: 'v1', code: 'HEMAT15' })
+      await vi.advanceTimersByTimeAsync(300); await flushPromises()
+      expect(b.form.voucherID).toBe('v1')
+      expect(b.quoteError.value).not.toBe('')
+      expect(toast.error).not.toHaveBeenCalled()
+    })
   })
 })

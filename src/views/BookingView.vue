@@ -127,7 +127,7 @@ const {
   loadingRooms, loadingSlots, initiating, availableVouchers, selectedVoucher,
   validCredits, selectedCreditId, loadingCredits,
   selectedStore, selectedRoom, storeHours, currentStep,
-  quote, quoteLoading, quoteError, refreshQuote, discountAmount, hasExpiredCreditsForDate, canPay,
+  quote, quoteLoading, quoteError, refreshQuote, discountAmount, payableAmount, hasExpiredCreditsForDate, canPay,
   onStoreChange, onRoomSelect, onDateChange, toggleSlot, clearAllSlots,
   selectCredit, onSelectVoucher, handleBooking, init,
 } = useBookingForm()
@@ -179,14 +179,14 @@ const summaryRows = computed(() => [
 // ── Harga & pembayaran ───────────────────────────────────────────
 const totalLabel = computed(() => {
   if (quoteLoading.value) return '…'
-  return quote.value ? formatRp(Math.max(0, quote.value.total_price - discountAmount.value)) : '—'
+  return payableAmount.value !== null ? formatRp(payableAmount.value) : '—'
 })
 
 const payBarProps = computed(() => {
   const hasSlots = selectedSlots.value.length > 0
   if (phoneCheckout.value) {
     return {
-      label:       discountAmount.value > 0 ? 'Estimasi total' : 'Total',
+      label:       'Total',
       amount:      totalLabel.value,
       error:       !!quoteError.value,
       actionLabel: initiating.value ? 'Memproses...' : 'Bayar Sekarang',
@@ -209,7 +209,7 @@ const priceProps = computed(() => ({
   loading:        quoteLoading.value,
   error:          quoteError.value,
   voucherDiscount: discountAmount.value,
-  voucherCode:    selectedVoucher.value?.code || '',
+  voucherCode:    quote.value?.voucher_code || selectedVoucher.value?.code || '',
 }))
 
 const paymentProps = computed(() => ({

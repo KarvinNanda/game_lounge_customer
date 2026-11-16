@@ -7,10 +7,15 @@ import { useAuthStore } from '@/stores/authStore'
 const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }
 vi.mock('@/composables/useToast', () => ({ useToast: () => toast }))
 vi.mock('@/api/authApi', () => ({ getCustomerMe: vi.fn(), getMyCredits: vi.fn() }))
-vi.mock('@/api/bookingApi', () => ({
-  getPublicStores: vi.fn(), getPublicRoomTemplates: vi.fn(), getBookingSlots: vi.fn(),
-  getMyVouchersForBooking: vi.fn(), initiateBooking: vi.fn(), getBookingQuote: vi.fn(),
-}))
+// Logged-in users get the customer quote; both endpoints share one mock here
+vi.mock('@/api/bookingApi', () => {
+  const quote = vi.fn()
+  return {
+    getPublicStores: vi.fn(), getPublicRoomTemplates: vi.fn(), getBookingSlots: vi.fn(),
+    getMyVouchersForBooking: vi.fn(), initiateBooking: vi.fn(),
+    getBookingQuote: quote, getCustomerBookingQuote: quote,
+  }
+})
 
 import * as api from '@/api/bookingApi'
 import { getMyCredits } from '@/api/authApi'

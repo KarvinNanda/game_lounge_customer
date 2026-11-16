@@ -18,9 +18,12 @@ vi.mock('@/api/bookingApi', () => ({
   getMyVouchersForBooking: vi.fn().mockResolvedValue({ data: { data: [] } }),
   initiateBooking:         vi.fn(),
   getBookingQuote:         vi.fn(),
+  getCustomerBookingQuote: vi.fn(),
 }))
 
-import { getBookingQuote } from '@/api/bookingApi'
+import { getBookingQuote as publicQuote, getCustomerBookingQuote } from '@/api/bookingApi'
+// The page is mounted logged in, so it asks the customer quote
+const getBookingQuote = getCustomerBookingQuote
 import BookingView from '@/views/BookingView.vue'
 
 const QUOTE = {
@@ -98,14 +101,22 @@ describe('BookingView price quote wiring', () => {
     expect(payButton(w).attributes('disabled')).toBeDefined()
   })
 
-  it('bases the voucher estimate on the server total', async () => {
+  it('shows the voucher discount and the total exactly as the server computed them', async () => {
     getBookingQuote.mockResolvedValue({ data: { data: QUOTE } })
     const w = await mountAtPayment()
     await settleQuote()
+    // Server numbers on purpose differ from 10% of 68000, so a FE calculation would show
+    getBookingQuote.mockResolvedValue({ data: { data: {
+      ...QUOTE, voucher_id: 'v1', voucher_code: 'HEMAT10', discount_amount: 6801, final_price: 61199,
+    } } })
     w.vm.onSelectVoucher({ voucher_id: 'v1', code: 'HEMAT10', discount_type: 'percentage', discount_value: 10 })
     await nextTick()
-    expect(w.text()).toContain('- Rp 6.800')
-    expect(w.find('[data-total]').text()).toContain('Rp 61.200')
+    await settleQuote()
+    expect(getBookingQuote).toHaveBeenLastCalledWith(expect.objectContaining({ voucher_id: 'v1' }))
+    expect(publicQuote).not.toHaveBeenCalled()
+    expect(w.text()).toContain('- Rp 6.801')
+    expect(w.find('[data-total]').text()).toContain('Rp 61.199')
+    expect(w.text()).not.toMatch(/estimasi/i)
   })
 
   it('keeps slot selection consecutive and tells the user when it restarts', async () => {
