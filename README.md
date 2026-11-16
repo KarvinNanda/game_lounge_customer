@@ -115,6 +115,7 @@ Runs on every push and PR to `main`: `npm ci` → `npm audit --omit=dev --audit-
 |---|---|
 | `useBookingForm.js` | All state and actions for the Booking page (the view and step components only render) |
 | `useBookingQuote.js` | Booking price from the server (`GET /public/booking/quote`) |
+| `useReservedVoucherRefresh.js` | Reloads a voucher list 1 minute after the earliest `reserved_until`, so a locked voucher comes back without a page refresh |
 | `useEventBooking.js` | Private event flow: branch → schedule → details → payment |
 | `useHoldConfirmation.js` | Polls payment status after the Xendit redirect |
 | `useCart.js` | F&B cart |
@@ -136,7 +137,7 @@ Runs on every push and PR to `main`: `npm ci` → `npm audit --omit=dev --audit-
 | `format.js` | `formatRp`, `formatRpShort` (15RB, 1.5JT), `formatDayLabel` (Hari ini / Besok / Sab, 24 Okt), date formats, capacity |
 | `fnb.js` | `isFnbEnabled()`, `fnbGuard` (route guard), `fnbOrderLink(booking)`: link to F&B ordering for an ongoing booking |
 | `slots.js` | Hour slot selection (slots must be consecutive) |
-| `voucher.js` | Voucher discount estimate based on the server's `total_price` |
+| `voucher.js` | Voucher discount estimate based on the server's `total_price`; reserved vouchers (`isVoucherReserved`, `usableVouchers`, `voucherRefreshDelay`) |
 | `radioKeys.js` | Keyboard navigation for radio groups |
 
 ---
@@ -251,7 +252,7 @@ Locked steps: Branch → Room → Date → Time, then checkout (`?step=pay` on p
 | Room detail (+ facilities) | `GET /public/room-templates/:id` |
 | Hourly slots | `GET /public/booking/slots` |
 | Price | `GET /public/booking/quote` |
-| Vouchers | `GET /customer/vouchers/available` |
+| Vouchers | `GET /customer/vouchers/available?include_reserved=true` |
 | Initiate | `POST /customer/bookings/initiate` |
 | Payment status | `GET /customer/bookings/by-hold/:hold_id` |
 
@@ -310,6 +311,7 @@ Order food & drinks for a booking that is in progress (`status = ongoing`). The 
   - On success, other devices are signed out.
 - **Forgot password**: always shows the same message, so it does not reveal whether the email is registered.
 - **Promo** (`/promo`): member-only vouchers.
+- **Reserved vouchers** (Promo and the booking voucher sheet): a voucher held by an unpaid booking hold comes back with `reserved_until`. It stays visible but cannot be picked, with a "TERKUNCI S/D HH:MM" chip (WIB) and "Dipakai di pembayaran lain". The backend frees it up to 1 minute after `reserved_until`, so `useReservedVoucherRefresh` reloads the list then. A lock more than 90 minutes away is not scheduled (wrong device clock).
 - **Banner** (`/banner/:id`): inactive banners return 404.
 
 ---

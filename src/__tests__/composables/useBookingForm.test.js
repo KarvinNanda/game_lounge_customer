@@ -48,6 +48,24 @@ describe('useBookingForm', () => {
     expect(b.today).toBe('2026-10-08')
   })
 
+  it('reloads vouchers one minute after a reserved voucher unlocks', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-16T20:30:10+07:00'))
+    const locked = { voucher_id: 'v9', reserved_until: '2026-11-16T20:32:10+07:00', hold_id: 'h1' }
+    api.getBookingSlots.mockResolvedValue(ok({ slots: slots('10:00') }))
+    api.getMyVouchersForBooking.mockResolvedValue(ok([locked]))
+    const b = await setup()
+    Object.assign(b.form, { storeId: 's', roomTemplateId: 1, date: '2026-11-17' })
+    b.onDateChange(); await flushPromises()
+    expect(api.getMyVouchersForBooking).toHaveBeenCalledTimes(1)
+    api.getMyVouchersForBooking.mockResolvedValue(ok([{ ...locked, reserved_until: null, hold_id: null }]))
+    await vi.advanceTimersByTimeAsync(3 * 60_000)
+    await flushPromises()
+    expect(api.getMyVouchersForBooking).toHaveBeenCalledTimes(2)
+    expect(api.getMyVouchersForBooking).toHaveBeenLastCalledWith({ store_id: 's', room_template_id: 1 })
+    expect(b.availableVouchers.value[0].reserved_until).toBeNull()
+  })
+
   it('drops a selected credit that is no longer valid after the slots change', async () => {
     api.getBookingSlots.mockResolvedValue(ok({ slots: slots('10:00', '11:00', '12:00') }))
     getMyCredits.mockResolvedValue(ok([{ id: 'c2', remaining_hours: 2, expires_at: '2099-01-01', is_active: true }]))

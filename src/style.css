@@ -220,3 +220,8 @@ body {
     scroll-behavior: auto !important;
   }
 }
+/* Voucher yang sedang dikunci hold pembayaran lain: latar bergaris emas tipis.
+   Garis emas di kiri dipasang per elemen (shadow), karena tiap elemen punya border sendiri. */
+@utility hud-reserved {
+  background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-q-gold) 6%, transparent) 0 8px, transparent 8px 16px);
+}

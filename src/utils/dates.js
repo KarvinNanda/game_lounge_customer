@@ -52,3 +52,11 @@ export const dateOnlyExpiryState = (endDate, now = new Date()) => {
   const endOfDay = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999)
   return expiryState(endOfDay, now)
 }
+
+const WIB_TIME = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'Asia/Jakarta' })
+
+/** ISO datetime (offset apa pun) → 'HH:MM' WIB, tidak tergantung zona waktu device. '' jika tidak valid. */
+export const formatTimeWIB = (iso) => {
+  const t = Date.parse(iso ?? '')
+  return Number.isNaN(t) ? '' : WIB_TIME.format(t)
+}

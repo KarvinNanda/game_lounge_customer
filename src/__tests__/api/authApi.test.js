@@ -20,6 +20,7 @@ import {
   updateCustomerProfile,
   changeCustomerPassword,
   getCreditsExpiring,
+  getMyVouchers,
 } from '@/api/authApi'
 
 describe('authApi', () => {
@@ -71,5 +72,11 @@ describe('authApi', () => {
 
     const result = getCustomerMe()
     expect(result).toBe(fakePromise)
+  })
+
+  // Backend adds reserved_until/hold_id only with include_reserved=true (locked vouchers are shown, not hidden)
+  it('getMyVouchers asks for reserved vouchers too', () => {
+    getMyVouchers()
+    expect(api.get).toHaveBeenCalledWith('/customer/vouchers/available', { params: { include_reserved: true } })
   })
 })

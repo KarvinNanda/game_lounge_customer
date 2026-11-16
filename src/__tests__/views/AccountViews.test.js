@@ -72,6 +72,36 @@ describe('PromoView', () => {
     await w.find('button[aria-label="Salin kode HEMAT10"]').trigger('click'); await flushPromises()
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('HEMAT10')
   })
+
+  const LOCKED = { voucher_id: 'v9', name: 'VIP Weekend 15%', code: 'VIPWKND', discount_type: 'percentage', discount_value: 15, end_date: '2026-11-30', reserved_until: '2026-11-16T20:32:10+07:00', hold_id: 'h1' }
+
+  it('a reserved voucher is shown locked until its time, without a copy button', async () => {
+    getMyVouchers.mockResolvedValue(ok([{ voucher_id: 'v1', name: 'H', code: 'HEMAT10', discount_type: 'fixed', discount_value: 1000 }, LOCKED]))
+    const w = await mountAt(PromoView, '/promo')
+    const card = w.find('[data-reserved]')
+    expect(card.text()).toContain('VIP Weekend 15%')
+    expect(card.text()).toContain('TERKUNCI S/D 20:32')
+    expect(card.text()).toContain('Dipakai di pembayaran lain')
+    expect(card.text()).toContain('VIPWKND') // the code stays visible, only copying is off
+    expect(w.find('button[aria-label="Salin kode VIPWKND"]').exists()).toBe(false)
+    expect(w.find('button[aria-label="Salin kode HEMAT10"]').exists()).toBe(true)
+    w.unmount()
+  })
+
+  it('reloads the list one minute after the lock ends, so the voucher comes back without a page refresh', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-16T20:30:10+07:00'))
+    getMyVouchers.mockResolvedValue(ok([LOCKED]))
+    const w = await mountAt(PromoView, '/promo')
+    expect(getMyVouchers).toHaveBeenCalledTimes(1)
+    getMyVouchers.mockResolvedValue(ok([{ ...LOCKED, reserved_until: null, hold_id: null }]))
+    await vi.advanceTimersByTimeAsync(3 * 60_000)
+    await flushPromises()
+    expect(getMyVouchers).toHaveBeenCalledTimes(2)
+    expect(w.find('[data-reserved]').exists()).toBe(false)
+    expect(w.find('button[aria-label="Salin kode VIPWKND"]').exists()).toBe(true)
+    w.unmount()
+  })
 })
 
 describe('BannerDetailView', () => {

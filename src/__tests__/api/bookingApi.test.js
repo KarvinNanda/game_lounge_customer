@@ -20,6 +20,7 @@ import {
   initiateBooking,
   getMyBookings,
   getMyBookingById,
+  getMyVouchersForBooking,
 } from '@/api/bookingApi'
 
 describe('bookingApi', () => {
@@ -91,5 +92,10 @@ describe('bookingApi', () => {
     const fakePromise = Promise.resolve({ data: { data: { hold_id: 'hold-1' } } })
     api.post.mockReturnValue(fakePromise)
     expect(initiateBooking({})).toBe(fakePromise)
+  })
+
+  it('getMyVouchersForBooking keeps its filters and asks for reserved vouchers too', () => {
+    getMyVouchersForBooking({ store_id: 's1', room_template_id: 8 })
+    expect(api.get).toHaveBeenCalledWith('/customer/vouchers/available', { params: { store_id: 's1', room_template_id: 8, include_reserved: true } })
   })
 })
