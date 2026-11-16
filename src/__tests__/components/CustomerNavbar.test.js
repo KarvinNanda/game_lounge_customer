@@ -86,6 +86,14 @@ describe('CustomerNavbar', () => {
     expect(w.text()).toContain('Keluar')
   })
 
+  // The menus float outside the blurred <nav>, so a see-through face lets page content show through.
+  it.each([['Notifikasi', 'button[aria-label^="Notifikasi"]'], ['Menu profil', 'button[aria-label="Menu profil"]']])('%s dropdown has an opaque face', async (_, sel) => {
+    const w = await mountNav(true)
+    await w.find(sel).trigger('click')
+    const menu = w.find('.origin-top-right')
+    expect(menu.find(':scope > [data-face]').attributes('data-tone')).toBe('solid')
+  })
+
   it('Escape closes open menus', async () => {
     const w = await mountNav(true)
     await w.find('button[aria-label="Menu profil"]').trigger('click')

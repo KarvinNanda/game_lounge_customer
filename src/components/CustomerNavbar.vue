@@ -61,7 +61,7 @@
 
             <Transition name="pop">
               <div v-if="showBell" :class="[MENU, 'w-72 p-4']">
-                <HudFace tone="default" />
+                <HudFace tone="solid" />
                 <p class="hud-label mb-3">Notifikasi</p>
                 <div v-if="!expiringCredits.length" class="py-4 text-center text-xs text-q-text-3">
                   Tidak ada notifikasi baru
@@ -103,7 +103,7 @@
 
             <Transition name="pop">
               <div v-if="showProfile" :class="[MENU, 'w-52 py-1']">
-                <HudFace tone="default" />
+                <HudFace tone="solid" />
                 <RouterLink to="/profile" :class="MENU_ITEM" @click="closeMenus">
                   <User class="size-4" aria-hidden="true" /> Profil Saya
                 </RouterLink>
