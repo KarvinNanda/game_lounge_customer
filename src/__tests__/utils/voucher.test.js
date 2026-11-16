@@ -32,6 +32,24 @@ describe('estimateVoucherDiscount', () => {
     expect(estimateVoucherDiscount(fixed(15000), 68000)).toBe(15000)
   })
 
+  // Same cases as backend money.PercentOf (money/rupiah_test.go): half up to whole rupiah.
+  it('rounds a percentage discount half up to whole rupiah, exactly like the backend', () => {
+    const cases = [
+      [10, 15, 2], [30, 25, 8], [3333, 15, 500], [10001, 15, 1500],
+      [33333, 15, 5000], [66667, 15, 10000], [1, 50, 1], [1, 49, 0],
+      [100000, 12.5, 12500],
+    ]
+    for (const [amount, value, want] of cases) {
+      expect(estimateVoucherDiscount(pct(value), amount), `${value}% of ${amount}`).toBe(want)
+    }
+  })
+
+  it('always returns whole rupiah, so total = price - discount matches /bookings/initiate', () => {
+    const d = estimateVoucherDiscount(pct(15), 33333)
+    expect(Number.isInteger(d)).toBe(true)
+    expect(33333 - d).toBe(28333)
+  })
+
   it('never discounts more than the price', () => {
     expect(estimateVoucherDiscount(fixed(100000), 68000)).toBe(68000)
     expect(estimateVoucherDiscount(pct(150), 68000)).toBe(68000)
