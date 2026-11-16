@@ -114,7 +114,7 @@ Runs on every push and PR to `main`: `npm ci` → `npm audit --omit=dev --audit-
 | File | Purpose |
 |---|---|
 | `useBookingForm.js` | All state and actions for the Booking page (the view and step components only render) |
-| `useBookingQuote.js` | Booking price from the server (`GET /public/booking/quote`) |
+| `useBookingQuote.js` | Booking price from the server (customer quote when logged in, public quote for guests) |
 | `useReservedVoucherRefresh.js` | Reloads a voucher list 1 minute after the earliest `reserved_until`, so a locked voucher comes back without a page refresh |
 | `useEventBooking.js` | Private event flow: branch → schedule → details → payment |
 | `useHoldConfirmation.js` | Polls payment status after the Xendit redirect |
@@ -137,7 +137,7 @@ Runs on every push and PR to `main`: `npm ci` → `npm audit --omit=dev --audit-
 | `format.js` | `formatRp`, `formatRpShort` (15RB, 1.5JT), `formatDayLabel` (Hari ini / Besok / Sab, 24 Okt), date formats, capacity |
 | `fnb.js` | `isFnbEnabled()`, `fnbGuard` (route guard), `fnbOrderLink(booking)`: link to F&B ordering for an ongoing booking |
 | `slots.js` | Hour slot selection (slots must be consecutive) |
-| `voucher.js` | Voucher discount estimate based on the server's `total_price`; reserved vouchers (`isVoucherReserved`, `usableVouchers`, `voucherRefreshDelay`) |
+| `voucher.js` | Reserved vouchers (`isVoucherReserved`, `usableVouchers`, `voucherRefreshDelay`) |
 | `radioKeys.js` | Keyboard navigation for radio groups |
 
 ---
@@ -242,7 +242,10 @@ Locked steps: Branch → Room → Date → Time, then checkout (`?step=pay` on p
 - Rooms show 4 at a time, with "+N lainnya" for the rest.
 
 - Time slots must be consecutive.
-- Prices always come from the server (`GET /public/booking/quote`), including multi-hour packages, happy hour, and flash sales. The on-screen voucher discount is only an estimate; the final amount comes from initiate.
+- Prices always come from the server, including multi-hour packages, happy hour, flash sales and the voucher discount. The app does no price math.
+  - Logged in: `GET /customer/bookings/quote` with an optional `voucher_id`. `total_price` is the price before the voucher, `discount_amount` the voucher discount, `final_price` what is paid (the same number `/bookings/initiate` charges).
+  - Guest: `GET /public/booking/quote`. Guests cannot pick a voucher, so `total_price` is what is paid.
+  - A voucher the server rejects (400, for example below the minimum purchase) is removed and the reason shown as a toast; the price is asked again without it. The quote does not lock the voucher, so initiate checks it again and its error is shown too.
 - The payment countdown is computed from `expires_at`.
 
 | Purpose | Endpoint |
@@ -251,7 +254,7 @@ Locked steps: Branch → Room → Date → Time, then checkout (`?step=pay` on p
 | Room templates | `GET /public/room-templates?store_id=` |
 | Room detail (+ facilities) | `GET /public/room-templates/:id` |
 | Hourly slots | `GET /public/booking/slots` |
-| Price | `GET /public/booking/quote` |
+| Price | `GET /customer/bookings/quote` (logged in, with voucher) or `GET /public/booking/quote` (guest) |
 | Vouchers | `GET /customer/vouchers/available?include_reserved=true` |
 | Initiate | `POST /customer/bookings/initiate` |
 | Payment status | `GET /customer/bookings/by-hold/:hold_id` |

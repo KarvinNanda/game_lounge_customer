@@ -4,11 +4,13 @@ import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
 import { useBookingQuote } from '@/composables/useBookingQuote'
 import { useReservedVoucherRefresh } from '@/composables/useReservedVoucherRefresh'
-import { getPublicStores, getPublicRoomTemplates, getBookingSlots, initiateBooking, getMyVouchersForBooking } from '@/api/bookingApi'
+import {
+  getPublicStores, getPublicRoomTemplates, getBookingSlots, initiateBooking, getMyVouchersForBooking,
+  getBookingQuote, getCustomerBookingQuote,
+} from '@/api/bookingApi'
 import { getMyCredits } from '@/api/authApi'
 import { redirectToInvoice, rememberPaymentExpiry, INVALID_PAYMENT_LINK } from '@/utils/payment'
 import { nextSlotSelection } from '@/utils/slots'
-import { estimateVoucherDiscount } from '@/utils/voucher'
 import { localISODate, parseLocalDate } from '@/utils/dates'
 
 /**
@@ -48,25 +50,42 @@ export const useBookingForm = () => {
     voucherID:      '',
   })
 
-  // ── Harga dari server (GET /public/booking/quote) ─────────────────
+  // ── Harga dari server ─────────────────────────────────────────────
+  // Login: GET /customer/bookings/quote, potongan voucher ikut dihitung server.
+  // Tamu: GET /public/booking/quote (tamu tidak bisa memilih voucher).
   const {
-    quote, loading: quoteLoading, error: quoteError, unavailable: quoteUnavailable, refresh: refreshQuote,
-  } = useBookingQuote(() =>
-    form.storeId && form.roomTemplateId && form.date && selectedSlots.value.length
-      ? {
-          store_id:         form.storeId,
-          room_template_id: form.roomTemplateId,
-          booking_date:     form.date,
-          selected_slots:   [...selectedSlots.value],
-        }
-      : null,
-  )
+    quote, loading: quoteLoading, error: quoteError, errorStatus: quoteErrorStatus,
+    unavailable: quoteUnavailable, refresh: refreshQuote,
+  } = useBookingQuote(() => {
+    if (!form.storeId || !form.roomTemplateId || !form.date || !selectedSlots.value.length) return null
+    const params = {
+      store_id:         form.storeId,
+      room_template_id: form.roomTemplateId,
+      booking_date:     form.date,
+      selected_slots:   [...selectedSlots.value],
+    }
+    if (authStore.isLoggedIn && form.voucherID) params.voucher_id = form.voucherID
+    return params
+  }, {
+    fetch: (params) => (authStore.isLoggedIn ? getCustomerBookingQuote(params) : getBookingQuote(params)),
+  })
+
+  // Voucher ditolak server (400, mis. minimum pembelian): lepas voucher, tampilkan alasannya.
+  // Quote otomatis diminta ulang tanpa voucher. Error jaringan, 401 (session habis) dan 5xx
+  // tidak melepas voucher.
+  watch(quoteError, (msg) => {
+    if (!msg || !form.voucherID || quoteErrorStatus.value !== 400) return
+    toast.error(msg)
+    onSelectVoucher(null)
+  })
 
   // Tombol bayar hanya aktif jika harga server sudah ada dan slot masih tersedia
   const quoteReady = computed(() => !!quote.value && !quoteLoading.value && !quoteError.value && !quoteUnavailable.value)
 
-  // Estimasi potongan voucher dari total server. Angka final tetap dari /bookings/initiate.
-  const discountAmount = computed(() => estimateVoucherDiscount(selectedVoucher.value, quote.value?.total_price))
+  // Angka dari server. Quote customer: total_price = sebelum voucher, final_price = yang dibayar.
+  // Quote publik tidak punya final_price, jadi yang dibayar = total_price.
+  const discountAmount = computed(() => quote.value?.discount_amount || 0)
+  const payableAmount  = computed(() => quote.value?.final_price ?? quote.value?.total_price ?? null)
 
   const totalSelectedHours = computed(() => selectedSlots.value.length)
 
@@ -306,7 +325,7 @@ export const useBookingForm = () => {
     // derived
     selectedStore, selectedRoom, storeHours, currentStep, totalSelectedHours,
     quote, quoteLoading, quoteError, quoteUnavailable, quoteReady, refreshQuote,
-    discountAmount, hasExpiredCreditsForDate, canPay,
+    discountAmount, payableAmount, hasExpiredCreditsForDate, canPay,
     // actions
     onStoreChange, onRoomSelect, onDateChange, toggleSlot, clearAllSlots, isSlotSelected,
     selectCredit, onSelectVoucher, handleBooking, init,

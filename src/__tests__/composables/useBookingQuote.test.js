@@ -115,4 +115,27 @@ describe('useBookingQuote', () => {
     expect(q.error.value).toBe('')
     expect(q.quote.value.total_price).toBe(68000)
   })
+
+  it('uses the fetcher passed in, read again on every request', async () => {
+    const fetcher = vi.fn().mockResolvedValue(ok({ total_price: 1, available: true }))
+    const source = ref(params(['10:00']))
+    scope = effectScope()
+    scope.run(() => useBookingQuote(() => source.value, { fetch: (p) => fetcher(p) }))
+    vi.advanceTimersByTime(250)
+    await flushPromises()
+    expect(fetcher).toHaveBeenCalledWith(params(['10:00']))
+    expect(getBookingQuote).not.toHaveBeenCalled()
+  })
+
+  it('exposes the HTTP status of an error, 0 when there was no response', async () => {
+    getBookingQuote.mockRejectedValueOnce({ response: { status: 400, data: { message: 'x' } } })
+    const { q } = setup(params(['10:00']))
+    vi.advanceTimersByTime(250)
+    await flushPromises()
+    expect(q.errorStatus.value).toBe(400)
+    getBookingQuote.mockRejectedValueOnce(new Error('Network Error'))
+    q.refresh()
+    await flushPromises()
+    expect(q.errorStatus.value).toBe(0)
+  })
 })

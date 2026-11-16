@@ -40,16 +40,21 @@ describe('BookingPriceSummary', () => {
     expect(w.text()).toContain('Flash 10.10')
   })
 
-  it('labels the total as an estimate when a voucher is applied', () => {
-    const w = mountSummary({ quote: QUOTE, voucherDiscount: 20000, voucherCode: 'HEMAT20' })
+  // Customer quote: total_price is before the voucher, final_price is what is paid
+  it('with a voucher, shows the server final_price as the total, not an estimate', () => {
+    const w = mountSummary({
+      quote: { ...QUOTE, discount_amount: 20000, final_price: 100000 }, voucherDiscount: 20000, voucherCode: 'HEMAT20',
+    })
     expect(w.text()).toContain('HEMAT20')
     expect(w.text()).toContain(`- ${rp(20000)}`)
     expect(w.find('[data-total]').text()).toContain(rp(100000))
-    expect(w.text()).toContain('Estimasi setelah voucher')
+    expect(w.text()).not.toMatch(/estimasi/i)
   })
 
-  it('never shows a negative total when the voucher exceeds the price', () => {
-    const w = mountSummary({ quote: QUOTE, voucherDiscount: 999999, voucherCode: 'X' })
+  it('does not subtract the discount itself (final_price is already discounted)', () => {
+    const w = mountSummary({
+      quote: { ...QUOTE, discount_amount: 120000, final_price: 0 }, voucherDiscount: 120000, voucherCode: 'X',
+    })
     expect(w.find('[data-total]').text()).toContain(rp(0))
   })
 

@@ -48,14 +48,12 @@
       </div>
 
       <div v-if="voucherDiscount > 0" class="flex justify-between text-q-green">
-        <span>Diskon voucher{{ voucherCode ? ` (${voucherCode})` : '' }} · estimasi</span>
+        <span>Diskon voucher{{ voucherCode ? ` (${voucherCode})` : '' }}</span>
         <span>- {{ formatRp(voucherDiscount) }}</span>
       </div>
 
       <div class="border-t border-q-border pt-2.5 flex justify-between items-end gap-3">
-        <span class="text-q-text-2">
-          {{ voucherDiscount > 0 ? 'Estimasi setelah voucher' : 'Total Pembayaran' }}
-        </span>
+        <span class="text-q-text-2">Total Pembayaran</span>
         <span data-total class="text-right">
           <s v-if="quote.has_flash_sale && quote.flash_discount > 0" class="block text-q-text-3 text-xs">
             {{ formatRp(quote.base_price) }}
@@ -63,10 +61,6 @@
           <span class="font-display text-xl text-q-primary-l">{{ formatRp(total) }}</span>
         </span>
       </div>
-      <!-- Backend: angka final setelah voucher hanya dari /bookings/initiate -->
-      <p v-if="voucherDiscount > 0" class="text-q-text-3 text-xs">
-        Potongan voucher final dihitung saat checkout.
-      </p>
     </template>
   </div>
 </template>
@@ -78,14 +72,15 @@ import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
 const emit = defineEmits(['retry'])
 
 const props = defineProps({
-  quote:           { type: Object, default: null },  // data dari GET /public/booking/quote
+  quote:           { type: Object, default: null },  // data quote publik atau quote customer
   loading:         Boolean,
   error:           { type: String, default: '' },
   voucherDiscount: { type: Number, default: 0 },
   voucherCode:     { type: String, default: '' },
 })
 
-const total = computed(() => Math.max(0, (props.quote?.total_price || 0) - props.voucherDiscount))
+// Quote customer: final_price = yang dibayar (sudah dipotong voucher). Quote publik: total_price.
+const total = computed(() => props.quote?.final_price ?? props.quote?.total_price ?? 0)
 
 const formatRp = (n) => `Rp ${Math.round(n || 0).toLocaleString('id-ID')}`
 </script>
