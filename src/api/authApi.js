@@ -8,6 +8,7 @@ export const updateCustomerProfile = (payload) => api.put('/customer/profile', p
 export const changeCustomerPassword= (payload) => api.put('/customer/change-password', payload)
 export const getCreditsExpiring    = ()        => api.get('/customer/credits/expiring')
 export const getMyCredits          = ()        => api.get('/customer/my-credits')
-export const getMyVouchers         = (params)  => api.get('/customer/vouchers/available', { params })
+// include_reserved: voucher yang sedang dikunci hold ikut dikirim (reserved_until, hold_id), supaya bisa ditampilkan terkunci
+export const getMyVouchers         = (params)  => api.get('/customer/vouchers/available', { params: { ...params, include_reserved: true } })
 export const getMyBookings         = (params)  => api.get('/customer/bookings', { params })
 export const getMyBookingById      = (id)      => api.get(`/customer/bookings/${id}`)

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { authGuard } from '@/router/guard'
 import { mockPaymentGuard } from '@/utils/payment'
+import { fnbGuard } from '@/utils/fnb'
 import { scrollBehavior } from '@/router/scroll'
 
 const routes = [
@@ -23,8 +24,8 @@ const routes = [
       { path: 'my-credits',      name: 'MyCredits',      component: () => import('@/views/MyCreditsView.vue'),       meta: { requiresAuth: true } },
       { path: 'promo',           name: 'Promo',          component: () => import('@/views/PromoView.vue'),            meta: { requiresAuth: true } },
       { path: 'event-booking',   name: 'EventBooking',   component: () => import('@/views/EventBookingView.vue'),    meta: { requiresAuth: true } },
-      { path: 'fnb-order',       name: 'FnbOrder',       component: () => import('@/views/FnbOrderView.vue'),         meta: { requiresAuth: true } },
-      { path: 'my-fnb-orders',   name: 'MyFnbOrders',    component: () => import('@/views/MyFnbOrdersView.vue'),      meta: { requiresAuth: true } },
+      { path: 'fnb-order',       name: 'FnbOrder',       component: () => import('@/views/FnbOrderView.vue'),         meta: { requiresAuth: true }, beforeEnter: fnbGuard },
+      { path: 'my-fnb-orders',   name: 'MyFnbOrders',    component: () => import('@/views/MyFnbOrdersView.vue'),      meta: { requiresAuth: true }, beforeEnter: fnbGuard },
     ]
   },
   {

@@ -23,7 +23,14 @@
     <ul v-else class="grid gap-2 lg:grid-cols-3">
       <li v-for="v in vouchers" :key="v.voucher_id">
         <!-- Tiket: potongan setengah lingkaran di tengah sisi kiri/kanan -->
-        <div class="ticket relative flex h-full items-stretch bg-surface shadow-[inset_0_0_0_1px_var(--color-q-border)]" :class="{ 'opacity-60': expiry(v).state === 'expired' }">
+        <div
+          class="ticket relative flex h-full items-stretch bg-surface"
+          :data-reserved="isVoucherReserved(v) || undefined"
+          :class="[
+            isVoucherReserved(v) ? 'hud-reserved shadow-[inset_3px_0_0_var(--color-q-gold),inset_0_0_0_1px_var(--color-q-border)]' : 'shadow-[inset_0_0_0_1px_var(--color-q-border)]',
+            { 'opacity-60': expiry(v).state === 'expired' },
+          ]"
+        >
           <div class="flex w-24 shrink-0 flex-col items-center justify-center gap-1 border-r border-dashed border-q-border bg-q-gold/10 p-3 text-center text-q-gold">
             <TicketPercent class="size-5" aria-hidden="true" />
             <span class="font-display text-[15px] leading-tight">{{ discountLabel(v) }}</span>
@@ -34,7 +41,13 @@
               <template v-if="v.min_purchase > 0">min {{ formatRp(v.min_purchase) }} · </template>
               <span :class="EXPIRY_TONE[expiry(v).state]">{{ expiry(v).state === 'ok' ? `s/d ${formatDateShort(v.end_date?.slice(0, 10))}` : expiry(v).label }}</span>
             </p>
-            <div class="mt-2 flex items-center gap-1">
+            <!-- Dipakai hold pembayaran lain: kode tidak ditawarkan untuk disalin sampai kuncinya lepas -->
+            <div v-if="isVoucherReserved(v)" class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <code class="hud-cut-sm bg-q-bg/70 px-2 py-1 font-mono text-xs tracking-[0.12em] text-q-text-3">{{ v.code }}</code>
+              <ReservedChip :until="v.reserved_until" />
+              <span class="w-full text-xs text-q-text-3">Dipakai di pembayaran lain</span>
+            </div>
+            <div v-else class="mt-2 flex items-center gap-1">
               <code class="hud-cut-sm bg-q-bg/70 px-2 py-1 font-mono text-xs tracking-[0.12em] text-q-primary-l">{{ v.code }}</code>
               <button
                 type="button"
@@ -59,6 +72,9 @@ import { getMyVouchers } from '@/api/authApi'
 import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
 import { dateOnlyExpiryState } from '@/utils/dates'
+import { isVoucherReserved } from '@/utils/voucher'
+import { useReservedVoucherRefresh } from '@/composables/useReservedVoucherRefresh'
+import ReservedChip from '@/components/ui/ReservedChip.vue'
 import { formatRp, formatDateShort } from '@/utils/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -85,16 +101,21 @@ const copy = async (code) => {
   }
 }
 
-onMounted(async () => {
+const load = async () => {
   try {
     const { data } = await getMyVouchers()
     vouchers.value = data.data || []
+    scheduleRefresh(vouchers.value)
   } catch {
     vouchers.value = []
   } finally {
     loading.value = false
   }
-})
+}
+// Voucher yang dikunci hold lain kembali sendiri setelah kuncinya lepas, tanpa refresh halaman
+const scheduleRefresh = useReservedVoucherRefresh(load)
+
+onMounted(load)
 </script>
 
 <style scoped>

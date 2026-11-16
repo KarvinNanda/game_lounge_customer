@@ -60,7 +60,7 @@
 
             <section v-for="cat in visibleMenu" :key="cat.id" class="mb-5" :aria-labelledby="`cat-${cat.id}`">
               <h2 :id="`cat-${cat.id}`" class="hud-label mb-2">{{ cat.name }}</h2>
-              <ul class="grid gap-1.5 lg:grid-cols-2">
+              <ul class="grid grid-cols-1 gap-1.5 lg:grid-cols-2">
                 <li v-for="item in cat.items" :key="item.id">
                   <HudPanel cut="sm" class="flex items-center gap-3 p-2.5">
                     <img v-if="item.image_url" :src="getImgUrl(item.image_url)" alt="" loading="lazy" class="hud-cut-sm size-12 shrink-0 object-cover" />

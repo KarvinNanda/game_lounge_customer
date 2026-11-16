@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, onTestFinished } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
@@ -165,6 +165,37 @@ describe('HomeView', () => {
     expect(labels.some((t) => t.includes('Private Event'))).toBe(true)
   })
 
+  describe('with F&B off (default)', () => {
+    beforeEach(() => vi.stubEnv('VITE_ENABLE_FNB', ''))
+    afterEach(() => vi.unstubAllEnvs())
+
+    it('has no F&B quick action, and the desktop grid has no empty fourth column', async () => {
+      const { wrapper } = await mountHome()
+      await flushPromises()
+      const actions = wrapper.findAll('[data-quick-action]')
+      expect(actions.map((el) => el.text()).join(' ')).not.toContain('F&B')
+      expect(actions).toHaveLength(3)
+      const grid = actions[0].element.parentElement
+      expect(grid.className).toContain('lg:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,1fr))]')
+    })
+
+    it('does not mention F&B anywhere on the page', async () => {
+      const { wrapper } = await mountHome()
+      await flushPromises()
+      expect(wrapper.text()).not.toContain('F&B')
+    })
+
+    it('an ongoing booking shows Detail, not Pesan F&B', async () => {
+      getMyBookings.mockImplementation(({ status }) => Promise.resolve({ data: { data: status === 'ongoing' ? [booking('ongoing')] : [] } }))
+      const { wrapper } = await mountHome({ loggedIn: true })
+      await flushPromises()
+      const card = wrapper.find('[data-session-card]')
+      expect(card.text()).toContain('SEDANG MAIN')
+      expect(card.text()).not.toContain('Pesan F&B')
+      expect(card.text()).toContain('Detail')
+    })
+  })
+
   // ── Session card ─────────────────────────────────────────────────────────────
 
   const booking = (status, date = '2026-10-21') => ({
@@ -172,7 +203,9 @@ describe('HomeView', () => {
     store: { name: 'Kelapa Gading' }, room: { room_template: { name: 'VIP Room' } },
   })
 
-  it('shows SEDANG MAIN with a Pesan F&B link for an ongoing booking', async () => {
+  it('shows SEDANG MAIN with a Pesan F&B link for an ongoing booking when F&B is on', async () => {
+    vi.stubEnv('VITE_ENABLE_FNB', 'true')
+    onTestFinished(() => vi.unstubAllEnvs())
     getMyBookings.mockImplementation(({ status }) => Promise.resolve({ data: { data: status === 'ongoing' ? [booking('ongoing')] : [] } }))
     const { wrapper } = await mountHome({ loggedIn: true })
     await flushPromises()

@@ -41,7 +41,7 @@
               <span class="ml-auto font-semibold text-q-gold tabular-nums">{{ formatRp(b.total_price) }}</span>
             </p>
             <BaseButton
-              v-if="b.status === 'ongoing'"
+              v-if="fnbEnabled && b.status === 'ongoing'"
               :to="fnbOrderLink(b)"
               size="sm"
               block
@@ -76,12 +76,14 @@ import { formatRp, formatDateShort } from '@/utils/format'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import HudPanel from '@/components/ui/HudPanel.vue'
-import { fnbOrderLink } from '@/utils/fnb'
+import { fnbOrderLink, isFnbEnabled } from '@/utils/fnb'
 import { parseLocalDate } from '@/utils/dates'
 import BaseSkeleton from '@/components/ui/BaseSkeleton.vue'
 import BaseEmptyState from '@/components/ui/BaseEmptyState.vue'
 import BaseSegmented from '@/components/ui/BaseSegmented.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
+
+const fnbEnabled = isFnbEnabled()
 
 // Filter dan pagination di server: GET /customer/bookings?page&per_page&status
 // "Aktif" = akan datang + sedang main (backend menerima daftar status dipisah koma)

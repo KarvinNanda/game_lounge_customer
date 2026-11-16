@@ -51,6 +51,14 @@ describe('FnbOrderView', () => {
     expect(w.text()).not.toContain('Kosong')
   })
 
+  // An implicit grid track is `auto` and grows to the row's min-content, so the qty stepper
+  // pushed the page wider than the phone. grid-cols-1 = minmax(0, 1fr) caps it.
+  it('item list columns cannot grow past the screen on phone', async () => {
+    await mountAt('/fnb-order?booking_id=101')
+    const list = w.find('button[aria-label="Tambah Es Teh"]').element.closest('ul')
+    expect(list.classList).toContain('grid-cols-1')
+  })
+
   it('category chips filter the list (no horizontal scroll strip)', async () => {
     await mountAt('/fnb-order?booking_id=101')
     const chips = w.find('[aria-label="Kategori"]')

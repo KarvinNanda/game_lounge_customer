@@ -3,6 +3,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useToast } from '@/composables/useToast'
 import { useBookingQuote } from '@/composables/useBookingQuote'
+import { useReservedVoucherRefresh } from '@/composables/useReservedVoucherRefresh'
 import { getPublicStores, getPublicRoomTemplates, getBookingSlots, initiateBooking, getMyVouchersForBooking } from '@/api/bookingApi'
 import { getMyCredits } from '@/api/authApi'
 import { redirectToInvoice, rememberPaymentExpiry, INVALID_PAYMENT_LINK } from '@/utils/payment'
@@ -126,6 +127,24 @@ export const useBookingForm = () => {
 
   let slotsSeq = 0 // response jadwal dari tanggal lama yang telat datang diabaikan
 
+  // Voucher yang berlaku untuk cabang + ruangan ini. Termasuk yang sedang dikunci hold
+  // (ditampilkan terkunci); daftar diambil ulang otomatis setelah kuncinya lepas.
+  let vouchersSeq = 0
+  const loadVouchers = async () => {
+    if (!authStore.isLoggedIn || !form.storeId || !form.roomTemplateId) return
+    const mySeq = ++vouchersSeq
+    try {
+      const { data } = await getMyVouchersForBooking({
+        store_id:         form.storeId,
+        room_template_id: form.roomTemplateId,
+      })
+      if (mySeq !== vouchersSeq) return
+      availableVouchers.value = data.data || []
+      scheduleVoucherRefresh(availableVouchers.value)
+    } catch {}
+  }
+  const scheduleVoucherRefresh = useReservedVoucherRefresh(loadVouchers)
+
   const loadHourlySlots = async () => {
     if (!form.storeId || !form.roomTemplateId || !form.date) return
     const mySeq = ++slotsSeq
@@ -141,16 +160,7 @@ export const useBookingForm = () => {
       if (mySeq !== slotsSeq) return
       hourlySlots.value = data.data?.slots || []
 
-      // Voucher yang berlaku untuk cabang + ruangan ini
-      if (authStore.isLoggedIn) {
-        try {
-          const { data: vData } = await getMyVouchersForBooking({
-            store_id:         form.storeId,
-            room_template_id: form.roomTemplateId,
-          })
-          if (mySeq === slotsSeq) availableVouchers.value = vData.data || []
-        } catch {}
-      }
+      await loadVouchers()
     } catch {
       if (mySeq === slotsSeq) toast.error('Gagal memuat jadwal')
     } finally {

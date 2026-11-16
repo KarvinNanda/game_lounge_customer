@@ -35,4 +35,10 @@ describe('PaymentStep', () => {
     await w2.find('button[aria-label="Hapus voucher H10"]').trigger('click')
     expect(w2.emitted('clear-voucher')).toHaveLength(1)
   })
+  it('the voucher row counts only usable vouchers, and names the locked ones', () => {
+    const locked = { voucher_id: 'v2', reserved_until: '2026-11-16T20:32:00+07:00' }
+    expect(mk({ vouchers: [{ voucher_id: 'v1' }, locked] }).find('[data-voucher-open]').text()).toContain('1 tersedia')
+    expect(mk({ vouchers: [locked] }).find('[data-voucher-open]').text()).toContain('1 dikunci')
+  })
 })
+

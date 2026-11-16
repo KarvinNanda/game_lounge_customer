@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, onTestFinished } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
@@ -35,7 +35,18 @@ describe('MyBookingsView', () => {
     expect(w.html()).not.toMatch(/overflow-y-auto|overflow-x-auto/)
   })
 
-  it('ongoing bookings link to F&B ordering with booking_id and room_info', async () => {
+  it('ongoing bookings offer no F&B link when F&B is off (default)', async () => {
+    vi.stubEnv('VITE_ENABLE_FNB', '')
+    onTestFinished(() => vi.unstubAllEnvs())
+    const w = await mountAt(MyBookingsView)
+    expect(w.text()).toContain('Sedang main')
+    expect(w.find('a[href^="/fnb-order"]').exists()).toBe(false)
+    expect(w.text()).not.toContain('F&B')
+  })
+
+  it('ongoing bookings link to F&B ordering with booking_id and room_info when F&B is on', async () => {
+    vi.stubEnv('VITE_ENABLE_FNB', 'true')
+    onTestFinished(() => vi.unstubAllEnvs())
     const w = await mountAt(MyBookingsView)
     const href = w.find('a[href^="/fnb-order"]').attributes('href')
     const q = new URLSearchParams(href.split('?')[1]) // router encode spasi sebagai '+'
@@ -118,7 +129,9 @@ describe('MyBookingsView', () => {
     expect(getMyBookings).toHaveBeenLastCalledWith({ page: 1, per_page: 20, status: 'upcoming,ongoing' })
   })
 
-  it('only ongoing bookings offer "Pesan F&B"', async () => {
+  it('only ongoing bookings offer "Pesan F&B" when F&B is on', async () => {
+    vi.stubEnv('VITE_ENABLE_FNB', 'true')
+    onTestFinished(() => vi.unstubAllEnvs())
     getMyBookings.mockResolvedValue(page([BOOKING, { ...BOOKING, id: 8, booking_code: 'BK-8', status: 'upcoming' }]))
     const w = await mountAt(MyBookingsView)
     const rows = w.findAll('li')

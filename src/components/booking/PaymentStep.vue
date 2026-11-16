@@ -46,7 +46,7 @@
           <TicketPercent class="size-5" aria-hidden="true" />
         </span>
         <span class="flex-1 text-sm text-q-text-2">Punya voucher?</span>
-        <span class="text-xs font-semibold text-q-primary-l">{{ vouchers.length }} tersedia</span>
+        <span class="text-xs font-semibold text-q-primary-l">{{ voucherCount }}</span>
         <ChevronRight class="size-4 text-q-primary-l" aria-hidden="true" />
       </button>
       <div v-else class="hud-cut-sm flex items-center gap-3 bg-q-gold/10 p-3 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-q-gold)_40%,transparent)]">
@@ -84,9 +84,11 @@
 import { RouterLink } from 'vue-router'
 import { Gamepad2, TriangleAlert, TicketPercent, ChevronRight, X, ShieldCheck } from 'lucide-vue-next'
 import PaymentMethodPicker from '@/components/booking/PaymentMethodPicker.vue'
+import { computed } from 'vue'
 import { formatRp, formatDateShort } from '@/utils/format'
+import { usableVouchers } from '@/utils/voucher'
 
-defineProps({
+const props = defineProps({
   loggedIn:          Boolean,
   loadingCredits:    Boolean,
   validCredits:      { type: Array, default: () => [] },
@@ -101,6 +103,13 @@ const emit = defineEmits(['select-credit', 'open-vouchers', 'clear-voucher', 'up
 
 // Tampilan aktif/tidak dari aria-pressed (lihat utility hud-option)
 const optionClass = () => 'hud-option flex w-full items-center gap-3 p-3 text-left'
+
+// Hanya voucher yang bisa dipakai yang dihitung "tersedia"; yang dikunci hold lain disebut terpisah
+const voucherCount = computed(() => {
+  const usable = usableVouchers(props.vouchers).length
+  const locked = props.vouchers.length - usable
+  return usable ? `${usable} tersedia` : `${locked} dikunci`
+})
 
 const voucherLabel = (v) => (v.discount_type === 'percentage' ? `${v.discount_value}% off` : `Hemat ${formatRp(v.discount_value)}`)
 </script>

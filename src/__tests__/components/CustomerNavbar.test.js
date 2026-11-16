@@ -78,12 +78,32 @@ describe('CustomerNavbar', () => {
     expect(w.text()).toContain('Tidak ada notifikasi baru')
   })
 
-  it('the profile menu has Profil Saya, Pesanan F&B and Keluar', async () => {
+  it('the profile menu has Profil Saya, Pesanan F&B and Keluar when F&B is on', async () => {
+    vi.stubEnv('VITE_ENABLE_FNB', 'true')
     const w = await mountNav(true)
     await w.find('button[aria-label="Menu profil"]').trigger('click')
     expect(w.text()).toContain('Profil Saya')
     expect(w.text()).toContain('Pesanan F&B')
     expect(w.text()).toContain('Keluar')
+    vi.unstubAllEnvs()
+  })
+
+  it('the profile menu has no F&B entry when F&B is off', async () => {
+    vi.stubEnv('VITE_ENABLE_FNB', '')
+    const w = await mountNav(true)
+    await w.find('button[aria-label="Menu profil"]').trigger('click')
+    expect(w.text()).toContain('Profil Saya')
+    expect(w.text()).not.toContain('F&B')
+    expect(w.find('a[href="/my-fnb-orders"]').exists()).toBe(false)
+    vi.unstubAllEnvs()
+  })
+
+  // The menus float outside the blurred <nav>, so a see-through face lets page content show through.
+  it.each([['Notifikasi', 'button[aria-label^="Notifikasi"]'], ['Menu profil', 'button[aria-label="Menu profil"]']])('%s dropdown has an opaque face', async (_, sel) => {
+    const w = await mountNav(true)
+    await w.find(sel).trigger('click')
+    const menu = w.find('.origin-top-right')
+    expect(menu.find(':scope > [data-face]').attributes('data-tone')).toBe('solid')
   })
 
   it('Escape closes open menus', async () => {
