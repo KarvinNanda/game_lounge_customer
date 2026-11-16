@@ -55,7 +55,7 @@
             <span aria-hidden="true" class="absolute -right-10 -top-10 size-40 rotate-45 border border-q-primary-l/30 lg:size-64" />
             <HudLabel tone="accent">// WELCOME</HudLabel>
             <p class="font-display text-[17px] leading-tight text-white lg:text-[26px]">Main bareng di Quantum</p>
-            <p class="text-sm text-q-text-2">Booking ruangan, top up credits, dan pesan F&amp;B dalam satu app.</p>
+            <p class="text-sm text-q-text-2">{{ fnbEnabled ? 'Booking ruangan, top up credits, dan pesan F&B dalam satu app.' : 'Booking ruangan, top up credits, dan private event dalam satu app.' }}</p>
           </div>
         </HudPanel>
       </section>
@@ -79,7 +79,7 @@
               {{ session.store?.name }} · <span class="font-mono text-q-primary-l">{{ session.booking_code }}</span>
             </p>
           </div>
-          <BaseButton v-if="sessionKind === 'ongoing'" :to="fnbOrderLink(session)" size="sm">
+          <BaseButton v-if="fnbEnabled && sessionKind === 'ongoing'" :to="fnbOrderLink(session)" size="sm">
             <UtensilsCrossed class="size-4" aria-hidden="true" /> Pesan F&amp;B
           </BaseButton>
           <RouterLink v-else to="/my-bookings" class="hud-label inline-flex min-h-11 shrink-0 items-center gap-0.5 text-q-primary-l! hud-focus">
@@ -118,9 +118,12 @@
 
       <!-- ── AKSI CEPAT ─────────────────────────────────────── -->
       <section aria-label="Aksi cepat" class="lg:col-span-3">
-        <div class="grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] grid-rows-2 gap-2 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))] lg:grid-rows-1 lg:gap-3.5">
+        <div
+          class="grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] grid-rows-2 gap-2 lg:grid-rows-1 lg:gap-3.5"
+          :class="fnbEnabled ? 'lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]' : 'lg:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,1fr))]'"
+        >
           <HudPanel
-            v-for="action in QUICK_ACTIONS"
+            v-for="action in quickActions"
             :key="action.label"
             tag="button"
             type="button"
@@ -219,7 +222,7 @@ import api from '@/api/index'
 import { getImgUrl } from '@/utils/security'
 import { formatRpShort, formatDayLabel } from '@/utils/format'
 import { expiryState } from '@/utils/dates'
-import { fnbOrderLink } from '@/utils/fnb'
+import { fnbOrderLink, isFnbEnabled } from '@/utils/fnb'
 import { CalendarCheck, CreditCard, PartyPopper, UtensilsCrossed, Gamepad2, Users, Star, ChevronRight } from 'lucide-vue-next'
 import HudPanel       from '@/components/ui/HudPanel.vue'
 import HudLabel       from '@/components/ui/HudLabel.vue'
@@ -237,8 +240,10 @@ const QUICK_ACTIONS = [
   { label: 'Booking',        icon: CalendarCheck,   desc: 'Pilih room & jam main', path: '/booking',       requiresAuth: true, primary: true },
   { label: 'Top Up Credits', icon: CreditCard,      desc: 'Lebih hemat per jam',   path: '/credits',       requiresAuth: true },
   { label: 'Private Event',  icon: PartyPopper,     desc: 'Ulang tahun, turnamen', path: '/event-booking', requiresAuth: true },
-  { label: 'Pesan F&B',      icon: UtensilsCrossed, desc: 'Diantar ke ruanganmu',  path: '/my-bookings',   requiresAuth: true, desktopOnly: true },
+  { label: 'Pesan F&B',      icon: UtensilsCrossed, desc: 'Diantar ke ruanganmu',  path: '/my-bookings',   requiresAuth: true, desktopOnly: true, fnb: true },
 ]
+const fnbEnabled = isFnbEnabled()
+const quickActions = QUICK_ACTIONS.filter((a) => fnbEnabled || !a.fnb)
 
 // ── Sesi & credits pemain ─────────────────────────────────────────
 const { session, kind: sessionKind, reload: reloadSession } = useActiveSession()

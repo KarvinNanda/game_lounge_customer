@@ -107,7 +107,7 @@
                 <RouterLink to="/profile" :class="MENU_ITEM" @click="closeMenus">
                   <User class="size-4" aria-hidden="true" /> Profil Saya
                 </RouterLink>
-                <RouterLink to="/my-fnb-orders" :class="MENU_ITEM" @click="closeMenus">
+                <RouterLink v-if="fnbEnabled" to="/my-fnb-orders" :class="MENU_ITEM" @click="closeMenus">
                   <UtensilsCrossed class="size-4" aria-hidden="true" /> Pesanan F&amp;B
                 </RouterLink>
                 <div class="mx-3 my-1 border-t border-border-subtle" />
@@ -140,6 +140,7 @@ import { useToast }                    from '@/composables/useToast'
 import { useCreditsSummary }           from '@/composables/useCreditsSummary'
 import { useCountUp }                  from '@/composables/useCountUp'
 import { customerLogout, getCreditsExpiring } from '@/api/authApi'
+import { isFnbEnabled }                from '@/utils/fnb'
 import { Bell, ChevronDown, User, UtensilsCrossed, LogOut, TriangleAlert, Diamond } from 'lucide-vue-next'
 import BaseButton                      from '@/components/ui/BaseButton.vue'
 import HudFace                         from '@/components/ui/HudFace.vue'
@@ -168,6 +169,7 @@ const LINKS = [
 const ICON_BTN  = 'group relative isolate size-11 flex items-center justify-center text-q-text-2 hover:text-q-primary-l cursor-pointer hud-press hud-focus'
 const MENU      = 'absolute right-0 top-13 z-50 isolate origin-top-right drop-shadow-[0_8px_24px_rgb(0_0_0/0.6)]'
 const MENU_ITEM = 'flex items-center gap-2.5 min-h-11 px-4 text-sm text-q-text-2 hover:bg-q-primary/10 hover:text-q-text transition-colors cursor-pointer hud-focus'
+const fnbEnabled = isFnbEnabled()
 
 const isActive  = (path) => (path === '/' ? route.path === '/' : route.path.startsWith(path))
 const linkClass = (path) => [

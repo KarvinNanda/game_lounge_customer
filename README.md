@@ -1,6 +1,6 @@
 # Gaming Lounge — Customer App
 
-Customer-facing frontend for **Quantum Gaming Center**: game lounge room booking, private events (renting a whole branch), play credits top-up, and F&B ordering. Built with **Vue 3 + Vite + Tailwind CSS v4**. Backend: the `game_lounge_be` repo (Go).
+Customer-facing frontend for **Quantum Gaming Center**: game lounge room booking, private events (renting a whole branch), play credits top-up, and F&B ordering (hidden for now, see `VITE_ENABLE_FNB`). Built with **Vue 3 + Vite + Tailwind CSS v4**. Backend: the `game_lounge_be` repo (Go).
 
 ---
 
@@ -49,6 +49,7 @@ cp .env.example .env.local   # .env.local is gitignored
 | `VITE_API_URL` | API base URL, e.g. `http://localhost:8080/api`. Required for production builds. |
 | `VITE_PAYMENT_HOSTS` | Hosts allowed as invoice redirect targets (comma-separated). Empty = `checkout.xendit.co,checkout-staging.xendit.co`. |
 | `VITE_ENABLE_MOCK_PAYMENT` | `true` enables `/payment/mock` (dev/staging only). Leave empty in production. |
+| `VITE_ENABLE_FNB` | `true` shows F&B ordering. Empty (default) hides every F&B entry point and redirects `/fnb-order` and `/my-fnb-orders` to `/`. F&B is out of scope for now (2026-11-16). |
 
 Every `VITE_*` value is baked into the browser bundle, so **never put secrets in them**.
 
@@ -133,7 +134,7 @@ Runs on every push and PR to `main`: `npm ci` → `npm audit --omit=dev --audit-
 | `security.js` | `sanitizeRedirect`, `safeJsonParse`, `getImgUrl`, payment host allowlist |
 | `dates.js` | `localISODate` (do not use `toISOString` for local dates), `dateOnlyExpiryState` |
 | `format.js` | `formatRp`, `formatRpShort` (15RB, 1.5JT), `formatDayLabel` (Hari ini / Besok / Sab, 24 Okt), date formats, capacity |
-| `fnb.js` | `fnbOrderLink(booking)`: link to F&B ordering for an ongoing booking |
+| `fnb.js` | `isFnbEnabled()`, `fnbGuard` (route guard), `fnbOrderLink(booking)`: link to F&B ordering for an ongoing booking |
 | `slots.js` | Hour slot selection (slots must be consecutive) |
 | `voucher.js` | Voucher discount estimate based on the server's `total_price` |
 | `radioKeys.js` | Keyboard navigation for radio groups |
@@ -286,6 +287,8 @@ Top Up uses locked steps: Branch → Package, then checkout.
 
 ### F&B (`/fnb-order`, `/my-fnb-orders`)
 
+Hidden unless `VITE_ENABLE_FNB=true`: no Home tile, no profile menu item, no "Pesan F&B" button, and both routes redirect to `/`.
+
 Order food & drinks for a booking that is in progress (`status = ongoing`). The cart opens in a bottom sheet.
 
 | Purpose | Endpoint |
@@ -323,7 +326,7 @@ Order food & drinks for a booking that is in progress (`status = ongoing`). The 
 | `/credits`, `/credits/success`, `/credits/failed` | `CreditsView`, `CreditsSuccessView`, `CreditsFailedView` | required |
 | `/my-bookings` | `MyBookingsView` | required |
 | `/my-credits` | `MyCreditsView` | required |
-| `/fnb-order`, `/my-fnb-orders` | `FnbOrderView`, `MyFnbOrdersView` | required |
+| `/fnb-order`, `/my-fnb-orders` | `FnbOrderView`, `MyFnbOrdersView` | required + `VITE_ENABLE_FNB=true` |
 | `/promo` | `PromoView` | required |
 | `/profile` | `ProfileView` | required |
 | `/payment/success`, `/payment/failed` | `PaymentSuccessView`, `PaymentFailedView` | required |
